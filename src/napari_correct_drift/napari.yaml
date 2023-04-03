@@ -1,0 +1,28 @@
+name: napari-correct-drift
+display_name: Napari Correct Drift
+contributions:
+  commands:
+    - id: napari-correct-drift.make_sample_data
+      python_name: napari_correct_drift._sample_data:make_sample_data
+      title: Load sample data from Napari Correct Drift
+    - id: napari-correct-drift.make_qwidget
+      python_name: napari_correct_drift._widget:ExampleQWidget
+      title: Make example QWidget
+    - id: napari-correct-drift.make_magic_widget
+      python_name: napari_correct_drift._widget:example_magic_widget
+      title: Make example magic widget
+    - id: napari-correct-drift.make_func_widget
+      python_name: napari_correct_drift._widget:example_function_widget
+      title: Make example function widget
+  sample_data:
+    - command: napari-correct-drift.make_sample_data
+      display_name: Napari Correct Drift
+      key: unique_id.1
+  widgets:
+    - command: napari-correct-drift.make_qwidget
+      display_name: Example QWidget
+    - command: napari-correct-drift.make_magic_widget
+      display_name: Example Magic Widget
+    - command: napari-correct-drift.make_func_widget
+      autogenerate: true
+      display_name: Example Function Widget
