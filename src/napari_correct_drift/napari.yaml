@@ -14,5 +14,5 @@ contributions:
       key: unique_id.1
   widgets:
     - command: napari-correct-drift.make_qwidget
-      display_name: Example QWidget
+      display_name: Napari Correct Drift Doc
 
