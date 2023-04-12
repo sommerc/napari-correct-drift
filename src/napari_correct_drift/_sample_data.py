@@ -42,7 +42,7 @@ class Example_TZYX:
         self.deltas = deltas_3d
         self.shifts = shifts_3d
 
-    def create(self, noise_level=8):
+    def create(self, noise_level=0):
         deltas = np.asarray(self.deltas)
 
         T, Z, Y, X = self.shape
@@ -86,7 +86,7 @@ class Example_TYX:
         self.deltas = deltas_2d
         self.shifts = shifts_2d
 
-    def create(self, noise_level=8):
+    def create(self, noise_level=0):
         deltas = np.asarray(self.deltas)
 
         T, Y, X = self.shape
@@ -111,8 +111,8 @@ class Example_TYX:
 
 
 class Example_TCYX(Example_TYX):
-    def create(self):
-        img = super().create()
+    def create(self, noise_level=0):
+        img = super().create(noise_level=noise_level)
 
         img = np.stack([img, img[::-1]], axis=1)
         self.shape = img.shape
@@ -130,15 +130,15 @@ def make_sample_data():
 
     return [
         (
-            Example_TYX().create(),
+            Example_TYX().create(noise_level=16),
             {"name": "test_TYX"},
         ),
         (
-            Example_TZYX().create(),
+            Example_TZYX().create(noise_level=16),
             {"name": "test_TZYX"},
         ),
         (
-            Example_TCYX().create(),
+            Example_TCYX().create(noise_level=16),
             {"name": "test_TCYX"},
         ),
     ]
