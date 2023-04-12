@@ -2,124 +2,10 @@
 doc
 """
 
-from itertools import tee, chain
-from functools import partialmethod
-
 import numpy as np
 from scipy.ndimage import shift
-from skimage.draw import polygon2mask
 from scipy.interpolate import interp1d
 from skimage.registration import phase_cross_correlation
-
-from scipy import fft
-
-
-def _upsampled_dft(
-    data, upsampled_region_size, upsample_factor=1, axis_offsets=None
-):
-    # if people pass in an integer, expand it to a list of equal-sized sections
-    if not hasattr(upsampled_region_size, "__iter__"):
-        upsampled_region_size = [
-            upsampled_region_size,
-        ] * data.ndim
-    else:
-        if len(upsampled_region_size) != data.ndim:
-            raise ValueError(
-                "shape of upsampled region sizes must be equal "
-                "to input data's number of dimensions."
-            )
-
-    if axis_offsets is None:
-        axis_offsets = [
-            0,
-        ] * data.ndim
-    else:
-        if len(axis_offsets) != data.ndim:
-            raise ValueError(
-                "number of axis offsets must be equal to input "
-                "data's number of dimensions."
-            )
-
-    im2pi = 1j * 2 * np.pi
-
-    dim_properties = list(zip(data.shape, upsampled_region_size, axis_offsets))
-
-    for n_items, ups_size, ax_offset in dim_properties[::-1]:
-        kernel = (np.arange(ups_size) - ax_offset)[:, None] * fft.fftfreq(
-            n_items, upsample_factor
-        )
-        kernel = np.exp(-im2pi * kernel)
-        # use kernel with same precision as the data
-        kernel = kernel.astype(data.dtype, copy=False)
-
-        # Equivalent to:
-        #   data[i, j, k] = kernel[i, :] @ data[j, k].T
-        data = np.tensordot(kernel, data, axes=(1, -1))
-    return data
-
-
-def phase_cross_correlation2(
-    reference_image, moving_image, *, upsample_factor=1, normalization="phase"
-):
-    src_freq = fft.fftn(reference_image)
-    target_freq = fft.fftn(moving_image)
-
-    # Whole-pixel shift - Compute cross-correlation by an IFFT
-    shape = src_freq.shape
-    image_product = src_freq * target_freq.conj()
-    if normalization == "phase":
-        eps = np.finfo(image_product.real.dtype).eps
-        image_product /= np.maximum(np.abs(image_product), 100 * eps)
-    elif normalization is not None:
-        raise ValueError("normalization must be either phase or None")
-    cross_correlation = fft.ifftn(image_product)
-
-    # Locate maximum
-    maxima = np.unravel_index(
-        np.argmax(np.abs(cross_correlation)), cross_correlation.shape
-    )
-    midpoints = np.array([np.fix(axis_size / 2) for axis_size in shape])
-
-    float_dtype = image_product.real.dtype
-
-    shifts = np.stack(maxima).astype(float_dtype, copy=False)
-    shifts[shifts > midpoints] -= np.array(shape)[shifts > midpoints]
-
-    if upsample_factor == 1:
-        pass
-    else:
-        # Initial shift estimate in upsampled grid
-        upsample_factor = np.array(upsample_factor, dtype=float_dtype)
-        shifts = np.round(shifts * upsample_factor) / upsample_factor
-        upsampled_region_size = np.ceil(upsample_factor * 1.5)
-        # Center of output array at dftshift + 1
-        dftshift = np.fix(upsampled_region_size / 2.0)
-        # Matrix multiply DFT around the current shift estimate
-        sample_region_offset = dftshift - shifts * upsample_factor
-        cross_correlation = _upsampled_dft(
-            image_product.conj(),
-            upsampled_region_size,
-            upsample_factor,
-            sample_region_offset,
-        ).conj()
-        # Locate maximum and map back to original pixel grid
-        maxima = np.unravel_index(
-            np.argmax(np.abs(cross_correlation)), cross_correlation.shape
-        )
-        CCmax = cross_correlation[maxima]
-
-        maxima = np.stack(maxima).astype(float_dtype, copy=False)
-        maxima -= dftshift
-
-        shifts += maxima / upsample_factor
-
-    # If its only one row or column the shift along that dimension has no
-    # effect. We set to zero.
-    for dim in range(src_freq.ndim):
-        if shape[dim] == 1:
-            shifts[dim] = 0
-
-    return shifts
 
 
 class ArrayRearranger:
@@ -188,34 +74,6 @@ class ArrayRearranger:
         b = np.arange(len(a))
         b[a] = b.copy()
         return b
-
-
-def pairwise(iterable):
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-
-def fast_int_shift(array, shift, cval=0):
-    assert array.ndim == len(
-        shift
-    ), f"Array dimensions do not match shifts array.ndim='{array.ndim}' with shifts='{shift}'"
-
-    # shift = np.array(shift).astype("int32")
-
-    res = np.roll(array, shift, axis=tuple(range(array.ndim)))
-    for d, s in enumerate(shift):
-        if s > 0:
-            sl = [slice(None)] * len(shift)
-            sl[d] = slice(0, s)
-            res[tuple(sl)] = cval
-        if s < 0:
-            sl = [slice(None)] * len(shift)
-            sl[d] = slice(s, None)
-            res[tuple(sl)] = cval
-
-    return res
 
 
 class ROIRect:
@@ -400,7 +258,7 @@ class ISTabilizer:
 
         return offsets
 
-    def interplate_offsets(self, offsets):
+    def interpolate_offsets(self, offsets):
         x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
         m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
         y = offsets[x, :]
