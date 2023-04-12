@@ -42,7 +42,7 @@ class Example_TZYX:
         self.deltas = deltas_3d
         self.shifts = shifts_3d
 
-    def create(self):
+    def create(self, noise_level=8):
         deltas = np.asarray(self.deltas)
 
         T, Z, Y, X = self.shape
@@ -60,10 +60,10 @@ class Example_TZYX:
             img[t][tuple(pos)] = 1
             img[t] = binary_dilation(img[t], ball(3))
 
-        img = img.astype("uint8") * (255 - 32)
+        img = img.astype("uint8") * (255 - noise_level)
 
-        # for t in range(T):
-        #     img[t] += (np.random.rand(Y, X) * 32).astype("uint8")
+        for t in range(T):
+            img[t] += (np.random.rand(Y, X) * noise_level).astype("uint8")
 
         return img
 
@@ -86,14 +86,14 @@ class Example_TYX:
         self.deltas = deltas_2d
         self.shifts = shifts_2d
 
-    def create(self):
+    def create(self, noise_level=8):
         deltas = np.asarray(self.deltas)
 
         T, Y, X = self.shape
         img = np.zeros((T, Y, X), dtype="uint8")
 
-        # for t in range(T):
-        #     img[t] += (np.random.rand(Y, X) * 64).astype("uint8")
+        for t in range(T):
+            img[t] += (np.random.rand(Y, X) * noise_level).astype("uint8")
 
         t = 0
         rr, cc = disk(self.start_pos, 8, shape=(256, 256))
