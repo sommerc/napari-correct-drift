@@ -232,7 +232,12 @@ class ROIRect:
         self.t0 = t0
         self.c0 = c0
 
-        self.origin = np.array([z_min, y_min, x_min])
+        self._check()
+
+    def _check(self):
+        assert self.z_max > self.z_min > -1, "z-dim mismatch"
+        assert self.y_max > self.y_min > -1, "y-dim mismatch"
+        assert self.x_max > self.x_min > -1, "x-dim mismatch"
 
     @classmethod
     def from_shape_poly(cls, shape_poly, dims, z_min, z_max):
@@ -242,11 +247,11 @@ class ROIRect:
         t = dims.find("t")
         t0 = int(p_min[t])
 
-        x_min = int(p_min[-1])
-        x_max = int(p_max[-1])
+        x_min = int(p_min[-1] + 0.5)
+        x_max = int(p_max[-1] + 0.5)
 
-        y_min = int(p_min[-2])
-        y_max = int(p_max[-2])
+        y_min = int(p_min[-2] + 0.5)
+        y_max = int(p_max[-2] + 0.5)
 
         if not "z" in dims:
             z_min = 0
@@ -259,6 +264,44 @@ class ROIRect:
 
         return cls(x_min, x_max, y_min, y_max, z_min, z_max, t0, c0)
 
+    @classmethod
+    def from_bbox(cls, bbox, t0, c0):
+        return cls(
+            bbox[4], bbox[5], bbox[2], bbox[3], bbox[0], bbox[1], t0, c0
+        )
+
+    @property
+    def origin(self):
+        return self.bbox[::2]
+
+    @property
+    def shape(self):
+        return self.bbox[1::2] - self.bbox[::2]
+
+    @property
+    def bbox(self):
+        return np.array(
+            [
+                self.z_min,
+                self.z_max,
+                self.y_min,
+                self.y_max,
+                self.x_min,
+                self.x_max,
+            ]
+        )
+
+    def __str__(self):
+        return f"""
+        t0 {self.t0}
+        c0 {self.c0}
+        z: {self.z_min}, {self.z_max}
+        y: {self.y_min}, {self.y_max}
+        x: {self.x_min}, {self.x_max}
+        
+        bbox: {self.bbox}
+        """
+
 
 class ISTabilizer:
     def __init__(self, data, dims):
@@ -269,7 +312,7 @@ class ISTabilizer:
             "x" in dims and "y" in dims
         ), f"Axis x or y not present in dims: '{dims}'"
 
-        self.multi_channel = "c" in dims
+        self.is_multi_channel = "c" in dims
         self.is_3d = "z" in dims
 
         self.dims = dims
@@ -278,134 +321,41 @@ class ISTabilizer:
 
         self.T, self.C, self.Z, self.Y, self.X = self.data.shape
 
-    def set_roi(self, roi):
-        self.roi = roi
+    @staticmethod
+    def iter_abs(T, t0, step):
+        rm = np.c_[np.ones(T) * t0, np.arange(T)]
+        rm_inc = rm[::step, :]
 
-    def crop_pad_roi(self, ref_img):
-        ref_img_crop = ref_img[
-            slice(self.roi.z_min, self.roi.z_max),
-            slice(self.roi.y_min, self.roi.y_max),
-            slice(self.roi.x_min, self.roi.x_max),
-        ]
+        # make sure last element is in iter (needed for interpolation)
+        if not np.all(rm[-1] == rm_inc[-1]):
+            rm = np.r_[rm_inc, rm[-1][None]]
 
-        diffs_back = np.array(ref_img.shape) - np.array(ref_img_crop.shape)
-        diffs_front = np.zeros_like(diffs_back)
+        return rm.astype("int32")
 
-        REF_MEAN = ref_img.mean()
+    @staticmethod
+    def iter_rel(T, t0, step):
+        r = np.concatenate([np.arange(t0, T - 1), np.arange(t0, 0, -1)])
+        m = np.concatenate([np.arange(t0 + 1, T), np.arange(t0 - 1, -1, -1)])
 
-        return np.pad(
-            ref_img_crop,
-            list(zip(diffs_front, diffs_back)),
-            mode="constant",
-            constant_values=REF_MEAN,
-        )
+        rm = np.stack([r, m], axis=1, dtype="int32")
 
-    def estimate_shifts_relative(
-        self,
-        t0,
-        channel=0,
-        increment=1,
-        upsample_factor=1,
-        roi_mask=None,
-    ):
-        if not self.multi_channel:
-            channel = 0
+        rm_inc = rm[::step]
 
-        t_range_forward = list(range(t0, self.T, increment))
-        if len(t_range_forward) > 0 and t_range_forward[-1] != self.T - 1:
-            t_range_forward.append(self.T - 1)
+        if not np.all(rm[-1] == rm_inc[-1]):
+            rm_inc = np.r_[rm_inc, rm[-1][None]]
 
-        t_range_backward = list(range(t0, 0, -increment))
-        if len(t_range_backward) > 0 and t_range_backward[-1] != 0:
-            t_range_backward.append(0)
-
-        offsets = np.zeros((self.T, 3 if self.is_3d else 2))
-        offsets.fill(np.nan)
-        if roi_mask is not None:
-            offsets[t0] = roi_mask.bbox[[0, 2]]
-
-        cnt = 0
-        for r, m in chain(
-            pairwise(t_range_forward), pairwise(t_range_backward)
-        ):
-            if self.is_3d:
-                ref_img = self.data[r, channel]
-                mov_img = self.data[m, channel]
-            else:
-                ref_img = self.data[r, channel, 0]
-                mov_img = self.data[m, channel, 0]
-
-            if roi_mask is not None:
-                ref_img_crop = ref_img[
-                    ...,
-                    slice(
-                        int(offsets[r][0]),
-                        int(offsets[r][0] + roi_mask.height),
-                    ),
-                    slice(
-                        int(offsets[r][1]),
-                        int(offsets[r][1] + roi_mask.width),
-                    ),
-                ]
-
-                # if cnt == 0:
-                diffs = np.array(mov_img.shape) - np.array(ref_img_crop.shape)
-
-                diffs_a = np.zeros_like(diffs)
-                diffs_b = diffs
-                REF_MEAN = ref_img.mean()
-
-                ref_img = np.pad(
-                    ref_img_crop,
-                    list(zip(diffs_a, diffs_b)),
-                    mode="constant",
-                    constant_values=REF_MEAN,
-                )
-
-            offset = phase_cross_correlation(
-                ref_img,
-                mov_img,
-                upsample_factor=upsample_factor,
-                return_error=False,
-            )
-
-            offset = -offset
-
-            print(" - r, m:", r, m, offset)
-            offsets[m] = -offset
-
-            cnt += 1
-            if cnt > 25:
-                pass
-                # break
-
-        if increment > 1:
-            x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
-            m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
-            y = offsets[x, :]
-            offsets[m] = interp1d(x, y, kind="linear", axis=0)(m)
-
-        offsets -= offsets[t0]
-        return offsets
+        return rm_inc
 
     def estimate_shifts_absolute(
         self,
-        t0,
+        t0=0,
         channel=0,
         increment=1,
         upsample_factor=1,
         roi=None,
     ):
-        if not self.multi_channel:
+        if not self.is_multi_channel:
             channel = 0
-
-        def iter_abs(T, t0, step):
-            a = np.c_[np.ones(T) * t0, np.arange(T)]
-            b = a[::step]
-            if not np.all(b[-1] == a[-1]):
-                b = np.r_[b, a[-1][None]]
-
-            return b.astype("int32")
 
         offsets = np.zeros((self.T, 3))
         offsets.fill(np.nan)
@@ -413,33 +363,48 @@ class ISTabilizer:
         ref_img = self.data[t0, channel]
 
         if roi is not None:
-            self.set_roi(roi)
-            ref_img = self.crop_pad_roi(ref_img)
+            ref_img_crop = ref_img[
+                slice(max(0, roi.bbox[0]), min(ref_img.shape[0], roi.bbox[1])),
+                slice(max(0, roi.bbox[2]), min(ref_img.shape[1], roi.bbox[3])),
+                slice(max(0, roi.bbox[4]), min(ref_img.shape[2], roi.bbox[5])),
+            ].copy()
 
-        for r, m in iter_abs(self.T, t0, increment):
+            ref_img = np.zeros_like(ref_img)
+
+            ref_img[
+                : ref_img_crop.shape[0],
+                : ref_img_crop.shape[1],
+                : ref_img_crop.shape[2],
+            ] = ref_img_crop
+
+        for r, m in self.iter_abs(self.T, t0, increment):
             mov_img = self.data[m, channel]
 
             offset, _, _ = phase_cross_correlation(
                 ref_img,
                 mov_img,
-                upsample_factor=1.0,
+                upsample_factor=upsample_factor,
                 return_error="always",
                 disambiguate=True,
-                overlap_ratio=0.1,
             )
 
             offset = -np.asarray(offset, dtype="float32")
 
             if roi is not None:
-                offset -= self.roi.origin
+                offset -= roi.bbox[::2]
 
             offsets[m] = offset
 
         if increment > 1:
-            x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
-            m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
-            y = offsets[x, :]
-            offsets[m] = interp1d(x, y, kind="linear", axis=0)(m)
+            offsets = self.interpolate_offsets(offsets)
+
+        return offsets
+
+    def interplate_offsets(self, offsets):
+        x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
+        m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
+        y = offsets[x, :]
+        offsets[m] = interp1d(x, y, kind="linear", axis=0)(m)
 
         return offsets
 
@@ -467,3 +432,83 @@ class ISTabilizer:
                 )
 
         return self.data_arranger.inv(output)
+
+    def estimate_shifts_relative(
+        self,
+        t0=0,
+        channel=0,
+        increment=1,
+        upsample_factor=2,
+        roi=None,
+    ):
+        offsets = np.zeros((self.T, 3))
+        offsets.fill(np.nan)
+
+        if roi is not None:
+            t0 = roi.t0
+            c0 = roi.c0
+            roi_t0 = ROIRect.from_bbox(roi.bbox, t0, c0)
+
+        if not self.is_multi_channel:
+            channel = 0
+
+        for r, m in self.iter_rel(self.T, t0, increment):
+            if (r == t0) and (roi is not None):
+                mov_bbox = roi_t0.bbox.copy()
+
+            ref_img = self.data[r, channel]
+            mov_img = self.data[m, channel]
+
+            if roi is not None:
+                ref_img_crop = ref_img[
+                    slice(
+                        max(0, mov_bbox[0]), min(ref_img.shape[0], mov_bbox[1])
+                    ),
+                    slice(
+                        max(0, mov_bbox[2]), min(ref_img.shape[1], mov_bbox[3])
+                    ),
+                    slice(
+                        max(0, mov_bbox[4]), min(ref_img.shape[2], mov_bbox[5])
+                    ),
+                ].copy()
+
+                ref_img = np.zeros_like(ref_img)
+
+                ref_img[
+                    : ref_img_crop.shape[0],
+                    : ref_img_crop.shape[1],
+                    : ref_img_crop.shape[2],
+                ] = ref_img_crop
+
+            offset, _, _ = phase_cross_correlation(
+                ref_img,
+                mov_img,
+                upsample_factor=upsample_factor,
+                return_error="always",
+                disambiguate=True,
+            )
+            offset = np.asarray(offset, dtype="float32")
+
+            if roi is not None:
+                offset += mov_bbox[::2]
+
+            if roi is not None:
+                mov_bbox[::2] -= np.round(offset).astype("int32")
+                mov_bbox[1::2] -= np.round(offset).astype("int32")
+
+                mov_bbox[0:2] = np.clip(mov_bbox[0:2], 0, ref_img.shape[0])
+                mov_bbox[2:4] = np.clip(mov_bbox[2:4], 0, ref_img.shape[1])
+                mov_bbox[4:] = np.clip(mov_bbox[4:], 0, ref_img.shape[2])
+            if m > r:
+                offsets[m] = -offset
+            else:
+                offsets[r] = offset
+
+        offsets[0] = 0
+        offsets = np.cumsum(offsets, axis=0)
+        offsets -= offsets[t0]
+
+        if increment > 1:
+            offsets = self.interpolate_offsets(offsets)
+
+        return offsets

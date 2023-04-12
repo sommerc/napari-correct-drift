@@ -62,8 +62,8 @@ class Example_TZYX:
 
         img = img.astype("uint8") * (255 - 32)
 
-        for t in range(T):
-            img[t] += (np.random.rand(Y, X) * 32).astype("uint8")
+        # for t in range(T):
+        #     img[t] += (np.random.rand(Y, X) * 32).astype("uint8")
 
         return img
 
@@ -92,8 +92,8 @@ class Example_TYX:
         T, Y, X = self.shape
         img = np.zeros((T, Y, X), dtype="uint8")
 
-        for t in range(T):
-            img[t] += (np.random.rand(Y, X) * 64).astype("uint8")
+        # for t in range(T):
+        #     img[t] += (np.random.rand(Y, X) * 64).astype("uint8")
 
         t = 0
         rr, cc = disk(self.start_pos, 8, shape=(256, 256))
