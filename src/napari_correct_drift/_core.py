@@ -7,6 +7,8 @@ from scipy.ndimage import shift
 from scipy.interpolate import interp1d
 from skimage.registration import phase_cross_correlation
 
+from napari.utils import progress
+
 
 class ArrayRearranger:
     """
@@ -192,17 +194,31 @@ class ISTabilizer:
 
     @staticmethod
     def iter_rel(T, t0, step):
-        r = np.concatenate([np.arange(t0, T - 1), np.arange(t0, 0, -1)])
-        m = np.concatenate([np.arange(t0 + 1, T), np.arange(t0 - 1, -1, -1)])
+        rm = []
 
-        rm = np.stack([r, m], axis=1, dtype="int32")
+        # forward
+        r = t0
+        while True:
+            m = r + step
+            if m < T:
+                rm.append([r, m])
+                r += step
+            else:
+                break
+        # backward
+        r = t0
+        while True:
+            m = r - step
+            if m > -1:
+                rm.append([r, m])
+                r -= step
+            else:
+                break
+        # make sure t0 is reference, if t0 < increment
+        if 1 <= t0 < step:
+            rm.append([t0, 0])
 
-        rm_inc = rm[::step]
-
-        if not np.all(rm[-1] == rm_inc[-1]):
-            rm_inc = np.r_[rm_inc, rm[-1][None]]
-
-        return rm_inc
+        return np.array(rm)
 
     def estimate_shifts_absolute(
         self,
@@ -235,7 +251,7 @@ class ISTabilizer:
                 : ref_img_crop.shape[2],
             ] = ref_img_crop
 
-        for r, m in self.iter_abs(self.T, t0, increment):
+        for r, m in progress(self.iter_abs(self.T, t0, increment)):
             mov_img = self.data[m, channel]
 
             offset, _, _ = phase_cross_correlation(
@@ -253,25 +269,24 @@ class ISTabilizer:
 
             offsets[m] = offset
 
-        if increment > 1:
-            offsets = self.interpolate_offsets(offsets)
-
         return offsets
 
     def interpolate_offsets(self, offsets):
         x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
         m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
         y = offsets[x, :]
-        offsets[m] = interp1d(x, y, kind="linear", axis=0)(m)
+        offsets[m] = interp1d(
+            x, y, kind="linear", axis=0, fill_value="extrapolate"
+        )(m)
 
         return offsets
 
     def apply_shifts(
         self,
         offsets,
-        use_3d=True,
-        interpolation_order=1,
-        boundary_mode="constant",
+        extend_output=False,
+        order=1,
+        mode="constant",
     ):
         output = np.zeros_like(self.data)
 
@@ -284,8 +299,8 @@ class ISTabilizer:
                 output[t, c] = shift(
                     img,
                     -offsets[t],
-                    order=interpolation_order,
-                    mode=boundary_mode,
+                    order=order,
+                    mode=mode,
                     prefilter=False,
                 )
 
@@ -299,8 +314,8 @@ class ISTabilizer:
         upsample_factor=2,
         roi=None,
     ):
-        offsets = np.zeros((self.T, 3))
-        offsets.fill(np.nan)
+        offsets_rel = np.zeros((self.T, 3))
+        offsets_rel.fill(np.nan)
 
         if roi is not None:
             t0 = roi.t0
@@ -310,7 +325,7 @@ class ISTabilizer:
         if not self.is_multi_channel:
             channel = 0
 
-        for r, m in self.iter_rel(self.T, t0, increment):
+        for r, m in progress(self.iter_rel(self.T, t0, increment)):
             if (r == t0) and (roi is not None):
                 mov_bbox = roi_t0.bbox.copy()
 
@@ -358,15 +373,15 @@ class ISTabilizer:
                 mov_bbox[2:4] = np.clip(mov_bbox[2:4], 0, ref_img.shape[1])
                 mov_bbox[4:] = np.clip(mov_bbox[4:], 0, ref_img.shape[2])
             if m > r:
-                offsets[m] = -offset
+                offsets_rel[m] = -offset
             else:
-                offsets[r] = offset
+                offsets_rel[r] = offset
 
-        offsets[0] = 0
-        offsets = np.cumsum(offsets, axis=0)
+        offsets_rel[0] = 0
+        nan_row = np.nonzero(np.isnan(offsets_rel).any(axis=1))[0]
+        offsets = np.nancumsum(offsets_rel, axis=0)
+        offsets[nan_row, :] = np.nan
+
         offsets -= offsets[t0]
-
-        if increment > 1:
-            offsets = self.interpolate_offsets(offsets)
 
         return offsets
