@@ -35,9 +35,7 @@ def test_tcyx():
     for t0 in [0, 7]:
         ofs = ist_2d.estimate_shifts_absolute(t0, channel=0)
         ok = ofs - example.shifts + example.shifts[t0]
-        assert np.allclose(ok, 0), "Shift estimation mismatch. Diff:\n" + str(
-            ok
-        )
+        assert np.allclose(ok, 0), "Shift estimation mismatch. Diff:\n"
 
 
 def test_tczyx():
@@ -121,7 +119,7 @@ def test_tczyx_roi():
 
     ofs = ist_3d.estimate_shifts_absolute(t0, roi=roi, channel=c0)
     ok = ofs - example.shifts + example.shifts[t0]
-    assert np.allclose(ok, 0), str(ok)
+    assert np.allclose(ok, 0)
 
 
 def test_tyx_rel():
@@ -135,7 +133,7 @@ def test_tyx_rel():
         assert np.allclose(ok, 0)
 
 
-def test_tzcyx_rel():
+def test_tczyx_rel():
     example = Example_TZYX()
     img_3d = example.create()
 
