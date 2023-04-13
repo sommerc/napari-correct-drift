@@ -8,41 +8,39 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
-from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
-from numpy.lib.arraysetops import isin
-
-from ._core import ISTabilizer, ROIRect
-
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import (
-    QButtonGroup,
-    QWidget,
-    QPushButton,
-    QSlider,
-    QCheckBox,
-    QLabel,
-    QSpinBox,
-    QHBoxLayout,
-    QVBoxLayout,
-    QFileDialog,
-    QComboBox,
-    QGridLayout,
-    QGroupBox,
-)
-
 from napari.layers.image.image import Image as IMAGE_LAYER
 from napari.layers.shapes.shapes import Shapes as SHAPE_LAYER
+from numpy.lib.arraysetops import isin
+from qtpy.QtCore import Qt
+from qtpy.QtCore import QAbstractTableModel
+from qtpy.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSlider,
+    QSpinBox,
+    QTableWidget,
+    QVBoxLayout,
+    QWidget,
+    QTableWidgetItem,
+    QTableView,
+)
+
+from ._core import ISTabilizer, ROIRect
+from pandas import DataFrame
+import numpy as np
 
 if TYPE_CHECKING:
     import napari
 
 
-def istabilize(image, dims, **kwargs):
-    ist = ISTabilizer(
-        image,
-        dims,
-    )
-
+def estimate_drift(ist, **kwargs):
     if kwargs["stabilize_mode"] == "absolute":
         esitmate_offsets_func = ist.estimate_shifts_absolute
 
@@ -57,7 +55,11 @@ def istabilize(image, dims, **kwargs):
         roi=kwargs["roi"],
     )
 
-    res = ist.apply_shifts(offsets, use_3d=kwargs["use_3d"])
+    return offsets
+
+
+def correct_drift(ist, offsets, **kwargs):
+    res = ist.apply_shifts(offsets, **kwargs)
     return res
 
 
@@ -132,10 +134,10 @@ class CorrectDriftDock(QWidget):
         self.viewer = napari_viewer
         super().__init__()
 
-        from napari.qt.threading import (
-            thread_worker,
+        from napari.qt.threading import (  # delayed import
             create_worker,
-        )  # delayed import
+            thread_worker,
+        )
 
         self.main_layout = QVBoxLayout()
 
@@ -260,11 +262,12 @@ class CorrectDriftDock(QWidget):
         self.setLayout(self.main_layout)
 
         def add_output_layer(image, editable=False):
-            seg_layer = self.viewer.add_image(image, name="Stabilized")
-            seg_layer.editable = editable
+            img_layer = self.viewer.add_image(image, name="Stabilized")
+            img_layer.editable = editable
 
         def check_and_run():
             # get image
+            print("Check and Run")
             image = self.input_image_layers[
                 self.input_layer.currentIndex()
             ].data
@@ -313,10 +316,13 @@ class CorrectDriftDock(QWidget):
                     z_max=self.roi_z_max_spin.value(),
                 )
 
-            worker = create_worker(
-                istabilize,
+            ist = ISTabilizer(
                 image,
                 dims,
+            )
+
+            drift_shifts = estimate_drift(
+                ist,
                 use_3d=use_3d,
                 roi=roi,
                 channel=channel,
@@ -325,24 +331,151 @@ class CorrectDriftDock(QWidget):
                 stabilize_mode=stabilize_mode,
                 upsample_factor=upsample_factor,
             )
-            worker.returned.connect(add_output_layer)
-            worker.start()
+
+            dock_widget = TableWidget(self.viewer, ist)
+            dock_widget.set_content(drift_shifts)
+            # # add widget to napari
+
+            self.viewer.window.add_dock_widget(
+                dock_widget,
+                area="right",
+                name="Estimated Drift",
+                tabify=False,
+            )
+
+            image_corrected = correct_drift(ist, drift_shifts)
+
+            add_output_layer(image_corrected)
+
+            # worker = create_worker(
+            #     estimate_drift,
+            #     ist,
+            #     use_3d=use_3d,
+            #     roi=roi,
+            #     channel=channel,
+            #     t0=t0,
+            #     increment=increment,
+            #     stabilize_mode=stabilize_mode,
+            #     upsample_factor=upsample_factor,
+            #     progress={"total", image.shape[0]},
+            # )
+
+            # worker.returned.connect(add_output_layer)
+            # worker.start()
 
         self.run_button.clicked.connect(check_and_run)
 
-    def get_image_dims(self):
-        if len(self.viewer.layers) > 0:
-            return self.viewer.layers[
-                self.input_layer.currentIndex()
-            ].data.shape
-        else:
-            return (0, 0)
+    # def get_image_dims(self):
+    #     if len(self.viewer.layers) > 0:
+    #         return self.viewer.layers[
+    #             self.input_layer.currentIndex()
+    #         ].data.shape
+    #     else:
+    #         return (0, 0)
 
-    def check_and_get_extra_dims(self):
-        *extra_dims, y_dim, x_dim = self.get_image_dims()
-        if len(extra_dims) == 0:
-            raise RuntimeError("Image is 2D. Nothing to stabilize")
-        elif len(extra_dims) > 3:
-            raise RuntimeError("Image is 6D. Unable to stabilize")
+    # def check_and_get_extra_dims(self):
+    #     *extra_dims, y_dim, x_dim = self.get_image_dims()
+    #     if len(extra_dims) == 0:
+    #         raise RuntimeError("Image is 2D. Nothing to stabilize")
+    #     elif len(extra_dims) > 3:
+    #         raise RuntimeError("Image is 6D. Unable to stabilize")
 
-        return extra_dims
+    #     return extra_dims
+
+
+class TableWidget(QWidget):
+    """
+    The table widget represents a table inside napari.
+    Tables are just views on `properties` of `layers`.
+    """
+
+    def __init__(self, ist: ISTabilizer, viewer: "napari.Viewer" = None):
+        super().__init__()
+
+        self.ist = ist
+        self._napari_viewer = viewer
+
+        self._view = QTableView()
+
+        copy_button = QPushButton("Copy to clipboard")
+        copy_button.clicked.connect(self._copy_clicked)
+
+        save_button = QPushButton("Save as csv...")
+        save_button.clicked.connect(self._save_clicked)
+
+        self.setWindowTitle("Estimated drift")
+        self.setLayout(QGridLayout())
+        action_widget = QWidget()
+        action_widget.setLayout(QHBoxLayout())
+        action_widget.layout().addWidget(copy_button)
+        action_widget.layout().addWidget(save_button)
+        self.layout().addWidget(action_widget)
+        self.layout().addWidget(self._view)
+        # action_widget.layout().setSpacing(3)
+        # action_widget.layout().setContentsMargins(0, 0, 0, 0)
+
+    def _save_clicked(self, event=None, filename=None):
+        if filename is None:
+            filename, _ = QFileDialog.getSaveFileName(
+                self, "Save as csv...", ".", "*.csv"
+            )
+        DataFrame(self._table._data).to_csv(filename)
+
+    def _copy_clicked(self):
+        DataFrame(self._table._data).to_clipboard()
+
+    def set_content(self, table: np.array):
+        self._table = ShiftTableModel(table)
+        self._view.setModel(self._table)
+        self._view.resizeColumnsToContents()
+        self._view.setCornerButtonEnabled(False)
+
+        # self._view.clear()
+        # self._view.setRowCount(len(table))
+        # self._view.setColumnCount(3)
+
+    def get_content(self) -> dict:
+        """
+        Returns the current content of the table
+        """
+        return self._table._data
+
+
+class ShiftTableModel(QAbstractTableModel):
+    def __init__(self, data):
+        super().__init__()
+        self._data = data
+
+    def rowCount(self, index):
+        return self._data.shape[0]
+
+    def columnCount(self, index):
+        return self._data.shape[1]
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return "ZYX"[section]
+
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return str(section)
+
+        return super().headerData(section, orientation, role)
+
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            if role == Qt.DisplayRole or role == Qt.EditRole:
+                value = self._data[index.row(), index.column()]
+                return str(value)
+
+    def setData(self, index, value, role):
+        if role == Qt.EditRole:
+            try:
+                value = float(value)
+            except ValueError:
+                return False
+            self._data[index.row(), index.column()] = value
+            return True
+        return False
+
+    def flags(self, index):
+        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
