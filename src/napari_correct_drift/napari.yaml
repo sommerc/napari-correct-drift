@@ -2,16 +2,35 @@ name: napari-correct-drift
 display_name: Napari Correct Drift
 contributions:
   commands:
-    - id: napari-correct-drift.make_sample_data
-      python_name: napari_correct_drift._sample_data:make_sample_data
-      title: Load sample data from Napari Correct Drift
+    - id: napari-correct-drift.sample_2d
+      python_name: napari_correct_drift._sample_data:sample_2d
+      title: Sample Data 2D
+
+    - id: napari-correct-drift.sample_3d
+      python_name: napari_correct_drift._sample_data:sample_3d
+      title: Sample Data 3D
+
+    - id: napari-correct-drift.sample_3d_ch
+      python_name: napari_correct_drift._sample_data:sample_3d_ch
+      title: Sample Data 3D + Channel
+
     - id: napari-correct-drift.make_qwidget
       python_name: napari_correct_drift._widget:CorrectDriftDock
       title: Make CorrectDriftDock QWidget
+
   sample_data:
-    - command: napari-correct-drift.make_sample_data
-      display_name: Napari Correct Drift
+    - command: napari-correct-drift.sample_2d
+      display_name: Napari Correct Drift 2D
+      key: unique_id.0
+
+    - command: napari-correct-drift.sample_3d
+      display_name: Napari Correct Drift 3D
       key: unique_id.1
+
+    - command: napari-correct-drift.sample_3d_ch
+      display_name: Napari Correct Drift 3D + Channel
+      key: unique_id.2
+
   widgets:
     - command: napari-correct-drift.make_qwidget
       display_name: Napari Correct Drift Doc

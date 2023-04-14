@@ -28,11 +28,7 @@ class Example_TZYX:
         shifts_3d = np.cumsum(deltas_3d, 0)
         shifts_3d = np.vstack(
             [
-                [
-                    0,
-                    0,
-                    0,
-                ],
+                [0] * 3,
                 shifts_3d,
             ]
         )
@@ -114,31 +110,37 @@ class Example_TCYX(Example_TYX):
     def create(self, noise_level=0):
         img = super().create(noise_level=noise_level)
 
-        img = np.stack([img, img[::-1]], axis=1)
+        img = np.stack([img, img[::-1], np.zeros_like(img)], axis=1)
         self.shape = img.shape
 
         return img
 
 
-def make_sample_data():
-    """Generates an image"""
-    # Return list of tuples
-    # [(data1, add_image_kwargs1), (data2, add_image_kwargs2)]
-    # Check the documentation for more information about the
-    # add_image_kwargs
-    # https://napari.org/stable/api/napari.Viewer.html#napari.Viewer.add_image
-
+def sample_2d():
     return [
         (
             Example_TYX().create(noise_level=16),
-            {"name": "test_TYX"},
+            {"name": "test_TYX", "contrast_limits": (0, 64)},
         ),
+    ]
+
+
+def sample_3d():
+    return [
         (
             Example_TZYX().create(noise_level=16),
-            {"name": "test_TZYX"},
+            {"name": "test_TZYX", "contrast_limits": (0, 64)},
         ),
+    ]
+
+
+def sample_3d_ch():
+    return [
         (
             Example_TCYX().create(noise_level=16),
-            {"name": "test_TCYX"},
+            {
+                "name": "test_TCYX",
+                "contrast_limits": (0, 64),
+            },
         ),
     ]
