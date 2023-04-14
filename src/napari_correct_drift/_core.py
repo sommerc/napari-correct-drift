@@ -251,7 +251,7 @@ class ISTabilizer:
                 : ref_img_crop.shape[2],
             ] = ref_img_crop
 
-        for r, m in progress(self.iter_abs(self.T, t0, increment)):
+        for _, m in progress(self.iter_abs(self.T, t0, increment)):
             mov_img = self.data[m, channel]
 
             offset, _, _ = phase_cross_correlation(
@@ -288,22 +288,58 @@ class ISTabilizer:
         order=1,
         mode="constant",
     ):
-        output = np.zeros_like(self.data)
+        if extend_output:
+            # compute new shape of extended output
+            shape_ext_zyx = np.ceil(ofs.max(0) - ofs.min(0)).astype(int)
+            shape_yxz = np.array([self.Z, self.Y, self.X])
+            out_shape_zyx = shape_ext_zyx + shape_yxz
 
-        # if self.is_3d and not use_3d:
-        #     offsets[0, :] = 0
+            # create extended output
+            output = np.zeros(
+                (self.T, self.C) + tuple(out_shape_zyx), dtype="float32"
+            )
 
-        for t in range(self.T):
-            for c in range(self.C):
-                img = self.data[t, c]
-                output[t, c] = shift(
-                    img,
-                    -offsets[t],
-                    order=order,
-                    mode=mode,
-                    prefilter=False,
-                )
+            # split shifts into integer and subpixel parts.
+            # the ndi.shift takes care of subpixel part
+            # the interger shifts are handled via giving an output slice
 
+            offsets_px = -np.ceil(offsets - offsets.max(0)).astype("int")
+            offsets_sub = -(offsets - offsets.max(0)) - offsets_px
+
+            for t in range(self.T):
+                for c in range(self.C):
+                    img = self.data[t, c]
+                    output_view = output[
+                        t,
+                        c,
+                        offsets_px[t, 0] : offsets_px[t, 0] + img.shape[0],
+                        offsets_px[t, 1] : offsets_px[t, 1] + img.shape[1],
+                        offsets_px[t, 2] : offsets_px[t, 2] + img.shape[2],
+                    ]
+
+                    shift(
+                        img,
+                        -offsets_sub[t],
+                        output=output_view,
+                        order=order,
+                        mode=mode,
+                        prefilter=False,
+                    )
+
+        else:
+            output = np.zeros_like(self.data)
+            for t in range(self.T):
+                for c in range(self.C):
+                    img = self.data[t, c]
+                    output[t, c] = shift(
+                        img,
+                        -offsets[t],
+                        order=order,
+                        mode=mode,
+                        prefilter=False,
+                    )
+
+        # Transfrom from TCZYX to original data layout
         return self.data_arranger.inv(output)
 
     def estimate_shifts_relative(
@@ -311,7 +347,7 @@ class ISTabilizer:
         t0=0,
         channel=0,
         increment=1,
-        upsample_factor=2,
+        upsample_factor=1,
         roi=None,
     ):
         offsets_rel = np.zeros((self.T, 3))
