@@ -33,44 +33,23 @@ from qtpy.QtWidgets import (
 )
 
 from ._core import ISTabilizer, ROIRect
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 import numpy as np
 
 if TYPE_CHECKING:
     import napari
 
 
-def estimate_drift(ist, **kwargs):
-    if kwargs["stabilize_mode"] == "absolute":
-        esitmate_offsets_func = ist.estimate_shifts_absolute
-
-    else:
-        esitmate_offsets_func = ist.estimate_shifts_relative
-
-    offsets = esitmate_offsets_func(
-        t0=kwargs["t0"],
-        channel=kwargs["channel"],
-        increment=kwargs["increment"],
-        upsample_factor=kwargs["upsample_factor"],
-        roi=kwargs["roi"],
-    )
-
-    return offsets
-
-
-def correct_drift(ist, offsets, **kwargs):
-    res = ist.apply_shifts(offsets, **kwargs)
-    return res
-
-
 class CorrectDriftDock(QWidget):
-    def _init_run(self):
-        ### Input Image
+    ROI_LAYER_NAME = "ROI"
+
+    def _init_input_layer_selection(self):
+        ### Input Image layer selection
+
         self.input_layer = QComboBox()
         self.input_image_layers = []
 
-        def update_input_layer(event=None):
-            print(event)
+        def init_input_layer():
             self.input_layer.clear()
             self.input_image_layers = []
             for layer in self.viewer.layers:
@@ -78,33 +57,37 @@ class CorrectDriftDock(QWidget):
                     self.input_image_layers.append(layer)
                     self.input_layer.addItem(layer.name)
 
-        update_input_layer()
-        print(self.input_image_layers)
+        init_input_layer()
 
-        self.viewer.layers.events.inserted.connect(update_input_layer)
-        self.viewer.layers.events.removed.connect(update_input_layer)
+        def on_inserted_layer(event):
+            layer = event.value
 
-        # run button
-        self.run_button = QPushButton("Correct Drift...")
+            if isinstance(layer, IMAGE_LAYER):
+                self.input_image_layers.append(layer)
+                self.input_layer.addItem(layer.name)
 
-        # add them
-        run_panel = QGroupBox("Correct Drift")
-        run_layout = QHBoxLayout()
-        run_layout.addWidget(self.input_layer)
-        run_layout.addWidget(self.run_button)
+        self.viewer.layers.events.inserted.connect(on_inserted_layer)
 
-        run_panel.setLayout(run_layout)
-        self.main_layout.addWidget(run_panel)
+        def on_removed_layer(event):
+            print("removed", event.value)
+            print("current selected", self.get_current_input_layer().name)
+            print(type(event.value), type(self.get_current_input_layer().name))
 
-    def _init_axis_selection(self):
-        axis_panel = QGroupBox("Define Axes")
+            if event.value == self.get_current_input_layer():
+                init_input_layer()
+
+        self.viewer.layers.events.removed.connect(on_removed_layer)
+
+        ### Axes selection
+
+        axis_panel = QWidget()
         axis_layout = QGridLayout()
-
         axis_panel.setLayout(axis_layout)
-        self.main_layout.addWidget(axis_panel)
+
+        self.axis_combos = {}
 
         def update_axes_selection(event=None):
-            layer = self.input_image_layers[self.input_layer.currentIndex()]
+            layer = self.get_current_input_layer()
 
             *extra_dims, _, _ = layer.data.shape
 
@@ -125,27 +108,88 @@ class CorrectDriftDock(QWidget):
                 axis_layout.itemAt(i).widget().setParent(None)
 
             for d, combo in self.axis_combos.items():
-                axis_layout.addWidget(QLabel(f"Axis {d}: "), d + 1, 0)
+                axis_layout.addWidget(QLabel(f"Axis {d} is: "), d + 1, 0)
                 axis_layout.addWidget(combo, d + 1, 1)
 
         self.input_layer.currentIndexChanged.connect(update_axes_selection)
 
-    def __init__(self, napari_viewer):
-        self.viewer = napari_viewer
-        super().__init__()
+        ### add both to dock
+        input_panel = QGroupBox("Input & Axes")
+        input_layout = QVBoxLayout()
+        input_panel.setLayout(input_layout)
 
-        from napari.qt.threading import (  # delayed import
-            create_worker,
-            thread_worker,
-        )
+        input_layout.addWidget(self.input_layer)
+        input_layout.addWidget(axis_panel)
 
-        self.main_layout = QVBoxLayout()
+        self.main_layout.addWidget(input_panel)
 
-        self._init_run()
+    def _init_run_panel(self):
+        ### add both to dock
+        run_panel = QGroupBox("Correct Drift")
+        run_layout = QVBoxLayout()
+        run_panel.setLayout(run_layout)
 
-        self._init_axis_selection()
+        tmp_panel = QWidget()
+        tmp_layout = QHBoxLayout()
+        tmp_panel.setLayout(tmp_layout)
 
-        ### Axis selecton
+        # estimate button
+        self.estimate_drift_button = QPushButton("Estimate Drift")
+        tmp_layout.addWidget(self.estimate_drift_button)
+        self.estimate_drift_button.clicked.connect(self.estimate_drift)
+
+        # tmp_layout.addWidget(QLabel("  or "))
+
+        # load button
+        self.load_drift_button = QPushButton("Load Drift")
+        tmp_layout.addWidget(self.load_drift_button)
+        self.load_drift_button.clicked.connect(self.load_drift)
+
+        run_layout.addWidget(tmp_panel)
+
+        # apply
+        self.apply_drift_button = QPushButton("Apply Drift")
+        tmp_layout.addWidget(self.apply_drift_button)
+        self.apply_drift_button.clicked.connect(self.apply_drift)
+
+        self.main_layout.addWidget(run_panel)
+
+    def get_current_input_layer(self):
+        return self.input_image_layers[self.input_layer.currentIndex()]
+
+    def _init_key_and_roi_panel(self):
+        # tracking panel
+        key_and_roi_panel = QGroupBox("Key frames")
+        key_and_roi_layout = QGridLayout()
+        key_and_roi_panel.setLayout(key_and_roi_layout)
+        i = 1
+
+        # stabilize relative to
+        self.estimate_drift_type = QComboBox()
+        self.estimate_drift_type.addItem("previous frame")
+        self.estimate_drift_type.addItem("absolute frame")
+
+        key_and_roi_layout.addWidget(QLabel("Relative to: "), i, 0)
+        key_and_roi_layout.addWidget(self.estimate_drift_type, i, 1)
+        i += 1
+
+        # key frame
+        self.key_frame = QSpinBox()
+        self.key_frame.setMinimum(0)
+        self.key_frame.setValue(0)
+
+        key_and_roi_layout.addWidget(QLabel("Key frame"), i, 0)
+        key_and_roi_layout.addWidget(self.key_frame, i, 1)
+        i += 1
+
+        # key channel
+        self.key_channel = QSpinBox()
+        self.key_channel.setMinimum(0)
+        self.key_channel.setValue(0)
+
+        key_and_roi_layout.addWidget(QLabel("Key channel"), i, 0)
+        key_and_roi_layout.addWidget(self.key_channel, i, 1)
+        i += 1
 
         # use roi
         self.roi_checkbox = QCheckBox()
@@ -154,216 +198,236 @@ class CorrectDriftDock(QWidget):
         def add_shapes_layer(checked):
             if checked:
                 for layer in self.viewer.layers:
-                    if isinstance(layer, SHAPE_LAYER):
+                    if isinstance(layer, SHAPE_LAYER) and (
+                        layer.name == self.ROI_LAYER_NAME
+                    ):
                         break
                 else:
-                    ndim = self.input_image_layers[
-                        self.input_layer.currentIndex()
-                    ].ndim
-                    print(ndim)
-                    self.viewer.add_shapes(ndim=ndim)
+                    ndim = self.get_current_input_layer().ndim
+                    self.viewer.add_shapes(name=self.ROI_LAYER_NAME, ndim=ndim)
 
         self.roi_checkbox.toggled.connect(add_shapes_layer)
 
-        self.roi_z_min_spin = QSpinBox()
-        self.roi_z_min_spin.setMinimum(0)
-        self.roi_z_min_spin.setValue(0)
+        key_and_roi_layout.addWidget(QLabel("Use ROI: "), i, 0)
+        key_and_roi_layout.addWidget(self.roi_checkbox, i, 1)
+        i += 1
 
-        self.roi_z_max_spin = QSpinBox()
-        self.roi_z_max_spin.setMinimum(-1)
-        self.roi_z_max_spin.setValue(-1)
+        # ROI z-min and z=max
+        self.roi_z_min = QSpinBox()
+        self.roi_z_min.setMinimum(0)
+        self.roi_z_min.setValue(0)
 
-        # use 3D
-        self.use_3d_checkbox = QCheckBox()
-        self.use_3d_checkbox.setChecked(False)
+        self.roi_z_max = QSpinBox()
+        self.roi_z_max.setMinimum(0)
+        self.roi_z_max.setValue(0)
+
+        key_and_roi_layout.addWidget(QLabel("Roi Z-min"), i, 0)
+        key_and_roi_layout.addWidget(self.roi_z_min, i, 1)
+        i += 1
+
+        key_and_roi_layout.addWidget(QLabel("Roi Z-max"), i, 0)
+        key_and_roi_layout.addWidget(self.roi_z_max, i, 1)
+        i += 1
+
+        self.main_layout.addWidget(key_and_roi_panel)
+
+    def __init__(self, napari_viewer: "napari.Viewer"):
+        self.viewer = napari_viewer
+        super().__init__()
+
+        self.main_layout = QVBoxLayout()
+
+        self._init_input_layer_selection()
+
+        self._init_run_panel()
+
+        self._init_key_and_roi_panel()
+
+        self._init_other_params()
+
+        self.main_layout.setAlignment(Qt.AlignTop)
+
+        self.setLayout(self.main_layout)
+
+    def _init_other_params(self):
+        parameter_panel = QGroupBox("Parameters")
+        parameter_layout = QGridLayout()
+        parameter_panel.setLayout(parameter_layout)
+        i = 1
 
         # increment
         self.increment_box = QSpinBox()
         self.increment_box.setMinimum(1)
-        self.increment_box.setMaximum(16)
         self.increment_box.setValue(1)
-
-        # stabilize relative to?
-        self.stabilize_to = QComboBox()
-        self.stabilize_to.addItem("relative to previous frame")
-        self.stabilize_to.addItem("relative to absolute frame")
-
-        # stabilize frame
-        self.stabilize_frame = QSpinBox()
-        self.stabilize_frame.setMinimum(0)
-
-        # def update_stabilize_frame(i):
-        #     tmp = self.stabilize_frame.value()
-        #     self.stabilize_frame.setMaximum(
-        #         self.viewer.layers[i].data.shape[0] - 1
-        #     )
-        #     self.stabilize_frame.setValue(tmp)
-
-        # self.input_layer.currentIndexChanged.connect(update_stabilize_frame)
-
-        # increment
-        self.upsample_box = QSpinBox()
-        self.upsample_box.setMinimum(1)
-        self.upsample_box.setMaximum(20)
-        self.upsample_box.setValue(1)
-
-        self.channel_select_spin = QSpinBox()
-        self.channel_select_spin.setMinimum(0)
-        self.channel_select_spin.setMaximum(16)
-        self.channel_select_spin.setValue(0)
-
-        # tracking panel
-        parameter_panel = QGroupBox("Parameters")
-        parameter_layout = QGridLayout()
-        i = 1
-
-        parameter_layout.addWidget(QLabel("Channel: "), i, 0)
-        parameter_layout.addWidget(self.channel_select_spin, i, 1)
-        i += 1
-
-        parameter_layout.addWidget(QLabel("Use ROI: "), i, 0)
-        parameter_layout.addWidget(self.roi_checkbox, i, 1)
-        i += 1
-
-        parameter_layout.addWidget(QLabel("Roi Z-min"), i, 0)
-        parameter_layout.addWidget(self.roi_z_min_spin, i, 1)
-        i += 1
-
-        parameter_layout.addWidget(QLabel("Roi Z-max"), i, 0)
-        parameter_layout.addWidget(self.roi_z_max_spin, i, 1)
-        i += 1
-
-        parameter_layout.addWidget(QLabel("Use 3D: "), i, 0)
-        parameter_layout.addWidget(self.use_3d_checkbox, i, 1)
-        i += 1
 
         parameter_layout.addWidget(QLabel("Increment"), i, 0)
         parameter_layout.addWidget(self.increment_box, i, 1)
         i += 1
 
-        parameter_layout.addWidget(QLabel("Align relative to: "), i, 0)
-        parameter_layout.addWidget(self.stabilize_to, i, 1)
-        i += 1
-
-        parameter_layout.addWidget(QLabel("Fixed frame"), i, 0)
-        parameter_layout.addWidget(self.stabilize_frame, i, 1)
-        i += 1
+        # subpixel
+        self.upsample_box = QSpinBox()
+        self.upsample_box.setMinimum(1)
+        self.upsample_box.setMaximum(20)
+        self.upsample_box.setValue(1)
 
         parameter_layout.addWidget(QLabel("Upsample factor"), i, 0)
         parameter_layout.addWidget(self.upsample_box, i, 1)
         i += 1
 
+        # subpixel
+        self.extend_output = QCheckBox()
+        self.extend_output.setChecked(False)
+
+        parameter_layout.addWidget(QLabel("Extend output"), i, 0)
+        parameter_layout.addWidget(self.extend_output, i, 1)
+        i += 1
+
         parameter_panel.setLayout(parameter_layout)
         self.main_layout.addWidget(parameter_panel)
 
-        # set the layout
-        self.main_layout.setAlignment(Qt.AlignTop)
+    def _check_input(self):
+        layer = self.get_current_input_layer()
+        image = layer.data
 
-        self.setLayout(self.main_layout)
+        # get axis
+        dims = ""
+        for _, combo in self.axis_combos.items():
+            dims += "tcz"[combo.currentIndex()]
+        dims += "yx"
 
-        def add_output_layer(image, editable=False):
-            img_layer = self.viewer.add_image(image, name="Stabilized")
-            img_layer.editable = editable
+        if "t" not in dims:
+            raise RuntimeError("Drift correction axis 'Time' not set...")
 
-        def check_and_run():
-            # get image
-            print("Check and Run")
-            image = self.input_image_layers[
-                self.input_layer.currentIndex()
-            ].data
+        if len(set(dims)) != len(dims):
+            raise RuntimeError(
+                "Dimensions are not unique. Choose each dimensions only once"
+            )
 
-            # get axis
-            dims = ""
-            for d, combo in self.axis_combos.items():
-                dims += "tcz"[combo.currentIndex()]
-            dims += "yx"
+        self.ist = ISTabilizer(
+            image,
+            dims,
+        )
 
-            if "t" not in dims:
-                raise RuntimeError("Stabilize axis 'Time' not set...")
+        return self.ist
 
-            if len(set(dims)) != len(dims):
-                raise RuntimeError("Dimensions are not unique...")
+    def estimate_drift(self):
+        self._check_input()
 
-            # fixed frame
-            t0 = self.stabilize_frame.value()
+        # fixed frame
+        key_frame = self.key_frame.value()
 
-            # use 3d
-            use_3d = self.use_3d_checkbox.isChecked()
+        # relative or absolute
+        estimate_mode = ["relative", "absolute"][
+            self.estimate_drift_type.currentIndex()
+        ]
 
-            # relative or absolute
-            stabilize_mode = ["relative", "absolute"][
-                self.stabilize_to.currentIndex()
-            ]
+        # channel
+        key_channel = self.key_channel.value()
 
-            # channel
-            channel = self.channel_select_spin.value()
+        # get increment
+        increment = self.increment_box.value()
 
-            # get increment
-            increment = self.increment_box.value()
+        # get increment
+        upsample_factor = self.upsample_box.value()
 
-            # get increment
-            upsample_factor = self.upsample_box.value()
+        use_roi = self.roi_checkbox.isChecked()
 
-            use_roi = self.roi_checkbox.isChecked()
+        roi = None
+        if use_roi:
+            roi_layer = self.viewer.layers[self.ROI_LAYER_NAME]
 
-            roi = None
-            if use_roi:
-                shape_poly = self.viewer.layers["Shapes"].data[0]
-                roi = ROIRect.from_shape_poly(
-                    shape_poly,
-                    dims,
-                    z_min=self.roi_z_min_spin.value(),
-                    z_max=self.roi_z_max_spin.value(),
+            if len(roi_layer.data) == 0:
+                raise RuntimeWarning(
+                    f"Use ROI checked, but not ROI in '{self.ROI_LAYER_NAME}' shapes layer"
                 )
 
-            ist = ISTabilizer(
-                image,
-                dims,
+            if len(roi_layer.data) > 1:
+                print(
+                    "Warning: More than one ROI in shpae layer, using first..."
+                )
+
+            shape_poly = roi_layer.data[0]
+            roi = ROIRect.from_shape_poly(
+                shape_poly,
+                self.ist.dims,
+                z_min=self.roi_z_min_spin.value(),
+                z_max=self.roi_z_max_spin.value(),
             )
 
-            drift_shifts = estimate_drift(
-                ist,
-                use_3d=use_3d,
-                roi=roi,
-                channel=channel,
-                t0=t0,
-                increment=increment,
-                stabilize_mode=stabilize_mode,
-                upsample_factor=upsample_factor,
-            )
+        if estimate_mode == "absolute":
+            esitmate_offsets_func = self.ist.estimate_shifts_absolute
 
-            dock_widget = TableWidget(self.viewer, ist)
-            dock_widget.set_content(drift_shifts)
-            # # add widget to napari
+        else:
+            esitmate_offsets_func = self.ist.estimate_shifts_relative
 
-            self.viewer.window.add_dock_widget(
-                dock_widget,
-                area="right",
-                name="Estimated Drift",
-                tabify=False,
-            )
+        drift_shifts = esitmate_offsets_func(
+            t0=key_frame,
+            channel=key_channel,
+            increment=increment,
+            upsample_factor=upsample_factor,
+            roi=roi,
+        )
 
-            image_corrected = correct_drift(ist, drift_shifts)
+        self.drift_table = TableWidget(self.viewer, self.ist)
+        self.drift_table.set_content(drift_shifts)
+        # # add widget to napari
 
-            add_output_layer(image_corrected)
+        self.viewer.window.add_dock_widget(
+            self.drift_table,
+            area="right",
+            name="Estimated Drift",
+            tabify=False,
+        )
 
-            # worker = create_worker(
-            #     estimate_drift,
-            #     ist,
-            #     use_3d=use_3d,
-            #     roi=roi,
-            #     channel=channel,
-            #     t0=t0,
-            #     increment=increment,
-            #     stabilize_mode=stabilize_mode,
-            #     upsample_factor=upsample_factor,
-            #     progress={"total", image.shape[0]},
-            # )
+    def load_drift(self):
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Save as csv...", ".", "*.csv"
+        )
 
-            # worker.returned.connect(add_output_layer)
-            # worker.start()
+        drift_shifts = read_csv(filename, index_col=0)
 
-        self.run_button.clicked.connect(check_and_run)
+        self._check_input()
+
+        self.drift_table = TableWidget(self.viewer, self.ist)
+        self.drift_table.set_content(drift_shifts.to_numpy())
+        # # add widget to napari
+
+        self.viewer.window.add_dock_widget(
+            self.drift_table,
+            area="right",
+            name=f"Drift ({filename})",
+            tabify=False,
+        )
+
+    def apply_drift(self):
+        image_corrected = self.ist.apply_shifts(
+            self.drift_table.get_content(),
+            extend_output=self.extend_output.isChecked(),
+        )
+
+        img_layer = self.viewer.add_image(
+            image_corrected,
+            name=f"{self.get_current_input_layer().name} (corr)",
+        )
+        img_layer.editable = False
+
+        # worker = create_worker(
+        #     estimate_drift,
+        #     ist,
+        #     use_3d=use_3d,
+        #     roi=roi,
+        #     channel=channel,
+        #     t0=t0,
+        #     increment=increment,
+        #     stabilize_mode=stabilize_mode,
+        #     upsample_factor=upsample_factor,
+        #     progress={"total", image.shape[0]},
+        # )
+
+        # worker.returned.connect(add_output_layer)
+        # worker.start()
+
+        # self.run_button.clicked.connect(check_and_run)
 
     # def get_image_dims(self):
     #     if len(self.viewer.layers) > 0:
@@ -419,10 +483,10 @@ class TableWidget(QWidget):
             filename, _ = QFileDialog.getSaveFileName(
                 self, "Save as csv...", ".", "*.csv"
             )
-        DataFrame(self._table._data).to_csv(filename)
+        DataFrame(self.get_content()).to_csv(filename)
 
     def _copy_clicked(self):
-        DataFrame(self._table._data).to_clipboard()
+        DataFrame(self.get_content()).to_clipboard()
 
     def set_content(self, table: np.array):
         self._table = ShiftTableModel(table)
@@ -430,11 +494,7 @@ class TableWidget(QWidget):
         self._view.resizeColumnsToContents()
         self._view.setCornerButtonEnabled(False)
 
-        # self._view.clear()
-        # self._view.setRowCount(len(table))
-        # self._view.setColumnCount(3)
-
-    def get_content(self) -> dict:
+    def get_content(self) -> np.array:
         """
         Returns the current content of the table
         """
