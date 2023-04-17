@@ -10,7 +10,7 @@ from skimage.registration import phase_cross_correlation
 from napari.utils import progress
 
 
-class ArrayRearranger:
+class ArrayAxesStandardizer:
     """
     Example:
 
@@ -164,7 +164,7 @@ class ROIRect:
 
 
 class ISTabilizer:
-    def __init__(self, data, dims):
+    def __init__(self, data: np.array, dims: str):
         assert (
             "t" in dims
         ), f"Axis 't' for stabilizing not found in data dims: '{dims}'"
@@ -176,13 +176,13 @@ class ISTabilizer:
         self.is_3d = "z" in dims
 
         self.dims = dims
-        self.data_arranger = ArrayRearranger("tczyx", dims)
+        self.data_arranger = ArrayAxesStandardizer("tczyx", dims)
         self.data = self.data_arranger(data)
 
         self.T, self.C, self.Z, self.Y, self.X = self.data.shape
 
     @staticmethod
-    def iter_abs(T, t0, step):
+    def iter_abs(T: int, t0: int, step: int) -> np.array:
         rm = np.c_[np.ones(T) * t0, np.arange(T)]
         rm_inc = rm[::step, :]
 
@@ -193,7 +193,7 @@ class ISTabilizer:
         return rm.astype("int32")
 
     @staticmethod
-    def iter_rel(T, t0, step):
+    def iter_rel(T: int, t0: int, step: int) -> np.array:
         rm = []
 
         # forward
@@ -222,11 +222,11 @@ class ISTabilizer:
 
     def estimate_shifts_absolute(
         self,
-        t0=0,
-        channel=0,
-        increment=1,
-        upsample_factor=1,
-        roi=None,
+        t0: int = 0,
+        channel: int = 0,
+        increment: int = 1,
+        upsample_factor: int = 1,
+        roi: ROIRect = None,
     ):
         if not self.is_multi_channel:
             channel = 0
@@ -283,10 +283,10 @@ class ISTabilizer:
 
     def apply_shifts(
         self,
-        offsets,
-        extend_output=False,
-        order=1,
-        mode="constant",
+        offsets: np.array,
+        extend_output: bool = False,
+        order: int = 1,
+        mode: str = "constant",
     ):
         if extend_output:
             # compute new shape of extended output
@@ -346,11 +346,11 @@ class ISTabilizer:
 
     def estimate_shifts_relative(
         self,
-        t0=0,
-        channel=0,
-        increment=1,
-        upsample_factor=1,
-        roi=None,
+        t0: int = 0,
+        channel: int = 0,
+        increment: int = 1,
+        upsample_factor: int = 1,
+        roi: ROIRect = None,
     ):
         offsets_rel = np.zeros((self.T, 3))
         offsets_rel.fill(np.nan)
