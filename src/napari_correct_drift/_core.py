@@ -290,7 +290,9 @@ class ISTabilizer:
     ):
         if extend_output:
             # compute new shape of extended output
-            shape_ext_zyx = np.ceil(ofs.max(0) - ofs.min(0)).astype(int)
+            shape_ext_zyx = np.ceil(offsets.max(0) - offsets.min(0)).astype(
+                int
+            )
             shape_yxz = np.array([self.Z, self.Y, self.X])
             out_shape_zyx = shape_ext_zyx + shape_yxz
 
