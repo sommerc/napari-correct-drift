@@ -379,17 +379,16 @@ class CorrectDriftDock(QWidget):
             tabify=False,
         )
 
-    def load_drift(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self, "Save as csv...", ".", "*.csv"
-        )
-
-        drift_shifts = read_csv(filename, index_col=0)
+    def load_drift(self, filename=None):
+        if filename is not None:
+            filename, _ = QFileDialog.getOpenFileName(
+                self, "Save as csv...", ".", "*.csv"
+            )
 
         self._check_input()
 
         self.drift_table = TableWidget(self.viewer, self.ist)
-        self.drift_table.set_content(drift_shifts.to_numpy())
+        self.drift_table.load(filename)
         # # add widget to napari
 
         self.viewer.window.add_dock_widget(
@@ -411,49 +410,13 @@ class CorrectDriftDock(QWidget):
         )
         img_layer.editable = False
 
-        # worker = create_worker(
-        #     estimate_drift,
-        #     ist,
-        #     use_3d=use_3d,
-        #     roi=roi,
-        #     channel=channel,
-        #     t0=t0,
-        #     increment=increment,
-        #     stabilize_mode=stabilize_mode,
-        #     upsample_factor=upsample_factor,
-        #     progress={"total", image.shape[0]},
-        # )
-
-        # worker.returned.connect(add_output_layer)
-        # worker.start()
-
-        # self.run_button.clicked.connect(check_and_run)
-
-    # def get_image_dims(self):
-    #     if len(self.viewer.layers) > 0:
-    #         return self.viewer.layers[
-    #             self.input_layer.currentIndex()
-    #         ].data.shape
-    #     else:
-    #         return (0, 0)
-
-    # def check_and_get_extra_dims(self):
-    #     *extra_dims, y_dim, x_dim = self.get_image_dims()
-    #     if len(extra_dims) == 0:
-    #         raise RuntimeError("Image is 2D. Nothing to stabilize")
-    #     elif len(extra_dims) > 3:
-    #         raise RuntimeError("Image is 6D. Unable to stabilize")
-
-    #     return extra_dims
-
 
 class TableWidget(QWidget):
-    """
-    The table widget represents a table inside napari.
-    Tables are just views on `properties` of `layers`.
-    """
+    """ """
 
-    def __init__(self, ist: ISTabilizer, viewer: "napari.Viewer" = None):
+    def __init__(
+        self, ist: ISTabilizer = None, viewer: "napari.Viewer" = None
+    ):
         super().__init__()
 
         self.ist = ist
@@ -462,10 +425,10 @@ class TableWidget(QWidget):
         self._view = QTableView()
 
         copy_button = QPushButton("Copy to clipboard")
-        copy_button.clicked.connect(self._copy_clicked)
+        copy_button.clicked.connect(self.copy_clicked)
 
         save_button = QPushButton("Save as csv...")
-        save_button.clicked.connect(self._save_clicked)
+        save_button.clicked.connect(self.save)
 
         self.setWindowTitle("Estimated drift")
         self.setLayout(QGridLayout())
@@ -478,15 +441,19 @@ class TableWidget(QWidget):
         # action_widget.layout().setSpacing(3)
         # action_widget.layout().setContentsMargins(0, 0, 0, 0)
 
-    def _save_clicked(self, event=None, filename=None):
+    def save(self, event=None, filename=None):
         if filename is None:
             filename, _ = QFileDialog.getSaveFileName(
                 self, "Save as csv...", ".", "*.csv"
             )
         DataFrame(self.get_content()).to_csv(filename)
 
-    def _copy_clicked(self):
+    def copy_clicked(self):
         DataFrame(self.get_content()).to_clipboard()
+
+    def load(self, event=None, filename=None):
+        drift_shifts = read_csv(filename, index_col=0).to_numpy()
+        self.set_content(drift_shifts)
 
     def set_content(self, table: np.array):
         self._table = ShiftTableModel(table)
