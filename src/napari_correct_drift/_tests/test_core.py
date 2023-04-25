@@ -10,7 +10,7 @@ def test_tyx():
     ist_2d = ISTabilizer(img_2d, "tyx")
 
     for t0 in [0, 17]:
-        ofs = ist_2d.estimate_shifts_absolute(t0)
+        ofs = ist_2d._estimate_drift_absolute(t0)
         ok = ofs - example.shifts + example.shifts[t0]
         assert np.allclose(ok, 0), "Shift estimation mismatch. Diff:\n"
 
@@ -21,7 +21,7 @@ def test_tzyx():
     ist_3d = ISTabilizer(img_3d, "tzyx")
 
     for t0 in [0, 16]:
-        ofs = ist_3d.estimate_shifts_absolute(t0)
+        ofs = ist_3d._estimate_drift_absolute(t0)
         ok = ofs - example.shifts + example.shifts[t0]
         assert np.allclose(ok, 0), "Shift estimation mismatch. Diff:\n"
 
@@ -33,7 +33,7 @@ def test_tcyx():
     ist_2d = ISTabilizer(img_2d, "tcyx")
 
     for t0 in [0, 7]:
-        ofs = ist_2d.estimate_shifts_absolute(t0, channel=0)
+        ofs = ist_2d._estimate_drift_absolute(t0, channel=0)
         ok = ofs - example.shifts + example.shifts[t0]
         assert np.allclose(ok, 0), "Shift estimation mismatch. Diff:\n"
 
@@ -46,7 +46,7 @@ def test_tczyx():
     ist_3d = ISTabilizer(img_3d, "tczyx")
 
     for t0 in [0, 16]:
-        ofs = ist_3d.estimate_shifts_absolute(t0, channel=0)
+        ofs = ist_3d._estimate_drift_absolute(t0, channel=0)
         ok = ofs - example.shifts + example.shifts[t0]
         assert np.allclose(ok, 0), "Shift estimation mismatch."
 
@@ -68,7 +68,7 @@ def test_tyx_roi():
     roi = ROIRect.from_shape_poly(poly2d, "tyx", 0, 1)
     t0 = roi.t0
 
-    ofs = ist_2d.estimate_shifts_absolute(t0, roi=roi)
+    ofs = ist_2d._estimate_drift_absolute(t0, roi=roi)
     ok = ofs - example.shifts + example.shifts[t0]
     assert np.allclose(ok, 0), "Shift estimation mismatch."
 
@@ -90,7 +90,7 @@ def test_tzyx_roi():
     roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 7, 15)
     t0 = roi.t0
 
-    ofs = ist_3d.estimate_shifts_absolute(t0, roi=roi)
+    ofs = ist_3d._estimate_drift_absolute(t0, roi=roi)
     ok = ofs - example.shifts + example.shifts[t0]
     assert np.allclose(ok, 0), "Shift estimation mismatch."
 
@@ -115,9 +115,9 @@ def test_tczyx_roi():
     roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 7, 15)
     t0 = roi.t0
     c0 = roi.c0
-    ofs = ist_3d.estimate_shifts_absolute(t0, roi=roi)
+    ofs = ist_3d._estimate_drift_absolute(t0, roi=roi)
 
-    ofs = ist_3d.estimate_shifts_absolute(t0, roi=roi, channel=c0)
+    ofs = ist_3d._estimate_drift_absolute(t0, roi=roi, channel=c0)
     ok = ofs - example.shifts + example.shifts[t0]
     assert np.allclose(ok, 0)
 
@@ -128,7 +128,7 @@ def test_tyx_rel():
     ist_2d = ISTabilizer(img_2d, "tyx")
 
     for t0 in [0, 6, 13]:
-        ofs = ist_2d.estimate_shifts_relative(t0)
+        ofs = ist_2d._estimate_drift_relative(t0)
         ok = ofs - example.shifts + example.shifts[t0]
         assert np.allclose(ok, 0)
 
@@ -142,7 +142,7 @@ def test_tczyx_rel():
     ist_3d = ISTabilizer(img_3d, "tczyx")
 
     for t0 in [0, 16]:
-        ofs = ist_3d.estimate_shifts_relative(t0, channel=0)
+        ofs = ist_3d._estimate_drift_relative(t0, channel=0)
         ok = ofs - example.shifts + example.shifts[t0]
         assert np.allclose(ok, 0), str(ok)
 
@@ -164,7 +164,7 @@ def test_tyx_roi_rel():
     start_roi = ROIRect.from_shape_poly(poly2d, "tyx", 0, 1)
     t0 = start_roi.t0
 
-    ofs = ist_2d.estimate_shifts_relative(t0, roi=start_roi)
+    ofs = ist_2d._estimate_drift_relative(t0, roi=start_roi)
     ok = ofs - example.shifts + example.shifts[t0]
     assert np.allclose(ok, 0), str(ok)
 
@@ -193,9 +193,9 @@ def test_zcyx_roi_rel():
     assert roi.z_min == 7
     assert roi.z_max == 15
 
-    ofs = ist_3d.estimate_shifts_relative(t0, roi=roi)
+    ofs = ist_3d._estimate_drift_relative(t0, roi=roi)
 
-    ofs = ist_3d.estimate_shifts_relative(t0, roi=roi, channel=c0)
+    ofs = ist_3d._estimate_drift_relative(t0, roi=roi, channel=c0)
     ok = ofs - example.shifts + example.shifts[t0]
 
     assert np.allclose(ok, 0), str(ok)
@@ -218,7 +218,7 @@ def test_tyx_big_roi_rel():
     start_roi = ROIRect.from_shape_poly(poly2d, "tyx", 0, 1)
     t0 = start_roi.t0
 
-    ofs = ist_2d.estimate_shifts_relative(t0, roi=start_roi)
+    ofs = ist_2d._estimate_drift_relative(t0, roi=start_roi)
 
     ok = ofs - example.shifts + example.shifts[t0]
     assert np.allclose(ok, 0)

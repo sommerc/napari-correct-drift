@@ -69,10 +69,6 @@ class CorrectDriftDock(QWidget):
         self.viewer.layers.events.inserted.connect(on_inserted_layer)
 
         def on_removed_layer(event):
-            print("removed", event.value)
-            print("current selected", self.get_current_input_layer().name)
-            print(type(event.value), type(self.get_current_input_layer().name))
-
             if event.value == self.get_current_input_layer():
                 init_input_layer()
 
@@ -374,12 +370,12 @@ class CorrectDriftDock(QWidget):
 
             if len(roi_layer.data) == 0:
                 raise RuntimeWarning(
-                    f"Use ROI checked, but not ROI in '{self.ROI_LAYER_NAME}' shapes layer"
+                    f"'Use ROI' is checked, but there is not ROI layer in '{self.ROI_LAYER_NAME}' shapes layer"
                 )
 
             if len(roi_layer.data) > 1:
                 print(
-                    "Warning: More than one ROI in shpae layer, using first..."
+                    "Warning: More than one ROI in shape layer, using first..."
                 )
 
             shape_poly = roi_layer.data[0]
@@ -390,23 +386,20 @@ class CorrectDriftDock(QWidget):
                 z_max=self.roi_z_max.value(),
             )
 
-        if estimate_mode == "absolute":
-            esitmate_offsets_func = self.ist.estimate_shifts_absolute
-
-        else:
-            esitmate_offsets_func = self.ist.estimate_shifts_relative
-
-        drift_shifts = esitmate_offsets_func(
+        drift_shifts = self.ist.estimate_drift(
             t0=key_frame,
             channel=key_channel,
             increment=increment,
             upsample_factor=upsample_factor,
             roi=roi,
+            mode=estimate_mode,
         )
+
+        if increment > 1:
+            drift_shifts = self.ist.interpolate_drift(drift_shifts)
 
         self.drift_table = TableWidget(self.viewer, self.ist)
         self.drift_table.set_content(drift_shifts)
-        # # add widget to napari
 
         self.viewer.window.add_dock_widget(
             self.drift_table,
@@ -425,7 +418,6 @@ class CorrectDriftDock(QWidget):
 
         self.drift_table = TableWidget(self.viewer, self.ist)
         self.drift_table.load(filename=filename)
-        # # add widget to napari
 
         self.viewer.window.add_dock_widget(
             self.drift_table,
@@ -435,7 +427,7 @@ class CorrectDriftDock(QWidget):
         )
 
     def apply_drift(self):
-        image_corrected = self.ist.apply_shifts(
+        image_corrected = self.ist.apply_drifts(
             self.drift_table.get_content(),
             extend_output=self.extend_output.isChecked(),
         )

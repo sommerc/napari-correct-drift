@@ -347,131 +347,29 @@ class ISTabilizer:
 
         return np.array(rm)
 
-    def estimate_shifts_absolute(
+    def estimate_drift(
         self,
         t0: int = 0,
         channel: int = 0,
         increment: int = 1,
         upsample_factor: int = 1,
         roi: ROIRect = None,
+        mode: str = "relative",
     ):
-        if not self.is_multi_channel:
-            channel = 0
-
-        offsets = np.zeros((self.T, 3))
-        offsets.fill(np.nan)
-
-        ref_img = self.data[t0, channel]
-
-        if roi is not None:
-            ref_img_crop = ref_img[
-                slice(max(0, roi.bbox[0]), min(ref_img.shape[0], roi.bbox[1])),
-                slice(max(0, roi.bbox[2]), min(ref_img.shape[1], roi.bbox[3])),
-                slice(max(0, roi.bbox[4]), min(ref_img.shape[2], roi.bbox[5])),
-            ].copy()
-
-            ref_img = np.zeros_like(ref_img)
-
-            ref_img[
-                : ref_img_crop.shape[0],
-                : ref_img_crop.shape[1],
-                : ref_img_crop.shape[2],
-            ] = ref_img_crop
-
-        for _, m in progress(self.iter_abs(self.T, t0, increment)):
-            mov_img = self.data[m, channel]
-
-            offset, _, _ = phase_cross_correlation(
-                ref_img,
-                mov_img,
-                upsample_factor=upsample_factor,
-                return_error="always",
-                disambiguate=True,
+        if mode == "relative":
+            return self._estimate_drift_relative(
+                t0, channel, increment, upsample_factor, roi
             )
 
-            offset = -np.asarray(offset, dtype="float32")
-
-            if roi is not None:
-                offset -= roi.bbox[::2]
-
-            offsets[m] = offset
-
-        return offsets
-
-    def interpolate_offsets(self, offsets: np.array):
-        x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
-        m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
-        y = offsets[x, :]
-        offsets[m] = interp1d(
-            x, y, kind="linear", axis=0, fill_value="extrapolate"
-        )(m)
-
-        return offsets
-
-    def apply_shifts(
-        self,
-        offsets: np.array,
-        extend_output: bool = False,
-        order: int = 1,
-        mode: str = "constant",
-    ):
-        if extend_output:
-            # compute new shape of extended output
-            shape_ext_zyx = np.ceil(offsets.max(0) - offsets.min(0)).astype(
-                int
+        elif mode == "absolute":
+            return self._estimate_drift_absolute(
+                t0, channel, increment, upsample_factor, roi
             )
-            shape_yxz = np.array([self.Z, self.Y, self.X])
-            out_shape_zyx = shape_ext_zyx + shape_yxz
-
-            # create extended output
-            output = np.zeros(
-                (self.T, self.C) + tuple(out_shape_zyx), dtype="float32"
-            )
-
-            # split shifts into integer and subpixel parts.
-            # the ndi.shift takes care of subpixel part
-            # the interger shifts are handled via giving an output slice
-
-            offsets_px = -np.ceil(offsets - offsets.max(0)).astype("int")
-            offsets_sub = -(offsets - offsets.max(0)) - offsets_px
-
-            for t in range(self.T):
-                for c in range(self.C):
-                    img = self.data[t, c]
-                    output_view = output[
-                        t,
-                        c,
-                        offsets_px[t, 0] : offsets_px[t, 0] + img.shape[0],
-                        offsets_px[t, 1] : offsets_px[t, 1] + img.shape[1],
-                        offsets_px[t, 2] : offsets_px[t, 2] + img.shape[2],
-                    ]
-
-                    shift(
-                        img,
-                        -offsets_sub[t],
-                        output=output_view,
-                        order=order,
-                        mode=mode,
-                        prefilter=False,
-                    )
 
         else:
-            output = np.zeros_like(self.data)
-            for t in range(self.T):
-                for c in range(self.C):
-                    img = self.data[t, c]
-                    output[t, c] = shift(
-                        img,
-                        -offsets[t],
-                        order=order,
-                        mode=mode,
-                        prefilter=False,
-                    )
+            raise AttributeError(f"Estimation mode '{mode}' not valid")
 
-        # Transfrom from TCZYX to original data layout
-        return self.data_arranger.inv(output)
-
-    def estimate_shifts_relative(
+    def _estimate_drift_relative(
         self,
         t0: int = 0,
         channel: int = 0,
@@ -550,3 +448,127 @@ class ISTabilizer:
         offsets -= offsets[t0]
 
         return offsets
+
+    def _estimate_drift_absolute(
+        self,
+        t0: int = 0,
+        channel: int = 0,
+        increment: int = 1,
+        upsample_factor: int = 1,
+        roi: ROIRect = None,
+    ):
+        if not self.is_multi_channel:
+            channel = 0
+
+        offsets = np.zeros((self.T, 3))
+        offsets.fill(np.nan)
+
+        ref_img = self.data[t0, channel]
+
+        if roi is not None:
+            ref_img_crop = ref_img[
+                slice(max(0, roi.bbox[0]), min(ref_img.shape[0], roi.bbox[1])),
+                slice(max(0, roi.bbox[2]), min(ref_img.shape[1], roi.bbox[3])),
+                slice(max(0, roi.bbox[4]), min(ref_img.shape[2], roi.bbox[5])),
+            ].copy()
+
+            ref_img = np.zeros_like(ref_img)
+
+            ref_img[
+                : ref_img_crop.shape[0],
+                : ref_img_crop.shape[1],
+                : ref_img_crop.shape[2],
+            ] = ref_img_crop
+
+        for _, m in progress(self.iter_abs(self.T, t0, increment)):
+            mov_img = self.data[m, channel]
+
+            offset, _, _ = phase_cross_correlation(
+                ref_img,
+                mov_img,
+                upsample_factor=upsample_factor,
+                return_error="always",
+                disambiguate=True,
+            )
+
+            offset = -np.asarray(offset, dtype="float32")
+
+            if roi is not None:
+                offset -= roi.bbox[::2]
+
+            offsets[m] = offset
+
+        return offsets
+
+    def interpolate_drift(self, offsets: np.array):
+        x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
+        m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
+        y = offsets[x, :]
+        offsets[m] = interp1d(
+            x, y, kind="linear", axis=0, fill_value="extrapolate"
+        )(m)
+
+        return offsets
+
+    def apply_drifts(
+        self,
+        offsets: np.array,
+        extend_output: bool = False,
+        order: int = 1,
+        mode: str = "constant",
+    ):
+        if extend_output:
+            # compute new shape of extended output
+            shape_ext_zyx = np.ceil(offsets.max(0) - offsets.min(0)).astype(
+                int
+            )
+            shape_yxz = np.array([self.Z, self.Y, self.X])
+            out_shape_zyx = shape_ext_zyx + shape_yxz
+
+            # create extended output
+            output = np.zeros(
+                (self.T, self.C) + tuple(out_shape_zyx), dtype="float32"
+            )
+
+            # split shifts into integer and subpixel parts.
+            # the ndi.shift takes care of subpixel part
+            # the interger shifts are handled via giving an output slice
+
+            offsets_px = -np.ceil(offsets - offsets.max(0)).astype("int")
+            offsets_sub = -(offsets - offsets.max(0)) - offsets_px
+
+            for t in range(self.T):
+                for c in range(self.C):
+                    img = self.data[t, c]
+                    output_view = output[
+                        t,
+                        c,
+                        offsets_px[t, 0] : offsets_px[t, 0] + img.shape[0],
+                        offsets_px[t, 1] : offsets_px[t, 1] + img.shape[1],
+                        offsets_px[t, 2] : offsets_px[t, 2] + img.shape[2],
+                    ]
+
+                    shift(
+                        img,
+                        -offsets_sub[t],
+                        output=output_view,
+                        order=order,
+                        mode=mode,
+                        prefilter=False,
+                    )
+
+        else:
+            output = np.zeros_like(self.data)
+            for t in range(self.T):
+                for c in range(self.C):
+                    img = self.data[t, c]
+                    output[t, c] = shift(
+                        img,
+                        -offsets[t],
+                        order=order,
+                        mode=mode,
+                        prefilter=False,
+                    )
+
+        # Transfrom from TCZYX to original data layout
+        return self.data_arranger.inv(output)
