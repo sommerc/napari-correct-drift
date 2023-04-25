@@ -113,6 +113,9 @@ class CorrectDriftDock(QWidget):
 
         self.input_layer.currentIndexChanged.connect(update_axes_selection)
 
+        if len(self.viewer.layers) > 0:
+            update_axes_selection(self.viewer.layers[0])
+
         ### add both to dock
         input_panel = QGroupBox("Input & Axes")
         input_layout = QVBoxLayout()
@@ -206,7 +209,15 @@ class CorrectDriftDock(QWidget):
                     ndim = self.get_current_input_layer().ndim
                     self.viewer.add_shapes(name=self.ROI_LAYER_NAME, ndim=ndim)
 
+        def toggle_z_selection(checked):
+            for w in self.z_roi_sel_widgets:
+                w.setVisible(checked)
+
+            self.key_frame.setDisabled(checked)
+            self.key_channel.setDisabled(checked)
+
         self.roi_checkbox.toggled.connect(add_shapes_layer)
+        self.roi_checkbox.toggled.connect(toggle_z_selection)
 
         key_and_roi_layout.addWidget(QLabel("Use ROI: "), i, 0)
         key_and_roi_layout.addWidget(self.roi_checkbox, i, 1)
@@ -221,13 +232,26 @@ class CorrectDriftDock(QWidget):
         self.roi_z_max.setMinimum(0)
         self.roi_z_max.setValue(0)
 
-        key_and_roi_layout.addWidget(QLabel("Roi Z-min"), i, 0)
+        self.roi_z_min_label = QLabel("Roi Z-min")
+        key_and_roi_layout.addWidget(self.roi_z_min_label, i, 0)
         key_and_roi_layout.addWidget(self.roi_z_min, i, 1)
         i += 1
 
-        key_and_roi_layout.addWidget(QLabel("Roi Z-max"), i, 0)
+        self.roi_z_max_label = QLabel("Roi Z-max")
+        key_and_roi_layout.addWidget(self.roi_z_max_label, i, 0)
         key_and_roi_layout.addWidget(self.roi_z_max, i, 1)
         i += 1
+
+        # used later to toggle visibility
+        self.z_roi_sel_widgets = [
+            self.roi_z_min_label,
+            self.roi_z_min,
+            self.roi_z_max_label,
+            self.roi_z_max,
+        ]
+
+        for w in self.z_roi_sel_widgets:
+            w.setVisible(False)
 
         self.main_layout.addWidget(key_and_roi_panel)
 
@@ -245,9 +269,21 @@ class CorrectDriftDock(QWidget):
 
         self._init_other_params()
 
+        self._init_tool_tips()
+
         self.main_layout.setAlignment(Qt.AlignTop)
 
         self.setLayout(self.main_layout)
+
+    def _init_tool_tips(self):
+        self.key_frame.setToolTip(
+            """The frame number that should be stabilized during drift correction. 
+            When ROI is enabled, the value is inferred from the ROI."""
+        )
+        self.key_channel.setToolTip(
+            """The channel number that should be stabilized during drift correction. 
+            When ROI is enabled, the value is inferred from the ROI."""
+        )
 
     def _init_other_params(self):
         parameter_panel = QGroupBox("Parameters")
@@ -350,8 +386,8 @@ class CorrectDriftDock(QWidget):
             roi = ROIRect.from_shape_poly(
                 shape_poly,
                 self.ist.dims,
-                z_min=self.roi_z_min_spin.value(),
-                z_max=self.roi_z_max_spin.value(),
+                z_min=self.roi_z_min.value(),
+                z_max=self.roi_z_max.value(),
             )
 
         if estimate_mode == "absolute":
@@ -388,7 +424,7 @@ class CorrectDriftDock(QWidget):
         self._check_input()
 
         self.drift_table = TableWidget(self.viewer, self.ist)
-        self.drift_table.load(filename)
+        self.drift_table.load(filename=filename)
         # # add widget to napari
 
         self.viewer.window.add_dock_widget(
