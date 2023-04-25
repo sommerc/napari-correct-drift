@@ -178,7 +178,9 @@ class ROIRect:
         self._check()
 
     def _check(self):
-        assert self.z_max > self.z_min > -1, "z-dim mismatch"
+        assert (
+            self.z_max > self.z_min > -1
+        ), "Z-dim mismatch. Choose Z minimum and maximum"
         assert self.y_max > self.y_min > -1, "y-dim mismatch"
         assert self.x_max > self.x_min > -1, "x-dim mismatch"
 
