@@ -474,7 +474,7 @@ class TableWidget(QWidget):
             filename, _ = QFileDialog.getSaveFileName(
                 self, "Save as csv...", ".", "*.csv"
             )
-        DataFrame(self.get_content()).to_csv(filename)
+        DataFrame(self.get_content()).to_csv(filename, header=["Z", "Y", "X"])
 
     def copy_clicked(self):
         DataFrame(self.get_content()).to_clipboard()
@@ -490,9 +490,6 @@ class TableWidget(QWidget):
         self._view.setCornerButtonEnabled(False)
 
     def get_content(self) -> np.array:
-        """
-        Returns the current content of the table
-        """
         return self._table._data
 
 
