@@ -388,7 +388,10 @@ class ISTabilizer:
         if not self.is_multi_channel:
             channel = 0
 
-        for r, m in progress(self.iter_rel(self.T, t0, increment)):
+        for r, m in progress(
+            self.iter_rel(self.T, t0, increment),
+            desc=f"Estimate drift (relative to frame '{t0}')",
+        ):
             if (r == t0) and (roi is not None):
                 mov_bbox = roi_t0.bbox.copy()
 
@@ -480,7 +483,10 @@ class ISTabilizer:
                 : ref_img_crop.shape[2],
             ] = ref_img_crop
 
-        for _, m in progress(self.iter_abs(self.T, t0, increment)):
+        for _, m in progress(
+            self.iter_abs(self.T, t0, increment),
+            desc=f"Estimate drift (absolute to frame '{t0}')",
+        ):
             mov_img = self.data[m, channel]
 
             offset, _, _ = phase_cross_correlation(
@@ -537,7 +543,7 @@ class ISTabilizer:
             offsets_px = -np.ceil(offsets - offsets.max(0)).astype("int")
             offsets_sub = -(offsets - offsets.max(0)) - offsets_px
 
-            for t in range(self.T):
+            for t in progress(range(self.T), desc=f"Applying drift"):
                 for c in range(self.C):
                     img = self.data[t, c]
                     output_view = output[
@@ -559,7 +565,7 @@ class ISTabilizer:
 
         else:
             output = np.zeros_like(self.data)
-            for t in range(self.T):
+            for t in progress(range(self.T), desc=f"Applying drift"):
                 for c in range(self.C):
                     img = self.data[t, c]
                     output[t, c] = shift(

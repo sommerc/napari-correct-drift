@@ -501,10 +501,12 @@ class TableWidget(QWidget):
         save_button = QPushButton("Save as csv...")
         save_button.clicked.connect(self.save)
 
-        self.setWindowTitle("Estimated drift")
+        self.setWindowTitle("Drift")
         self.setLayout(QGridLayout())
+
         action_widget = QWidget()
         action_widget.setLayout(QHBoxLayout())
+        action_widget.layout().addWidget(QLabel("Drifts to apply:"))
         action_widget.layout().addWidget(copy_button)
         action_widget.layout().addWidget(save_button)
         self.layout().addWidget(action_widget)
