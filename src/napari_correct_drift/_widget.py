@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from napari.layers.image.image import Image as IMAGE_LAYER
 from napari.layers.shapes.shapes import Shapes as SHAPE_LAYER
+from napari.utils import notifications
 from numpy.lib.arraysetops import isin
 from qtpy.QtCore import Qt
 from qtpy.QtCore import QAbstractTableModel
@@ -45,7 +46,6 @@ class CorrectDriftDock(QWidget):
 
     def _init_input_layer_selection(self):
         ### Input Image layer selection
-
         self.input_layer = QComboBox()
         self.input_image_layers = []
 
@@ -258,6 +258,9 @@ class CorrectDriftDock(QWidget):
         self.viewer = napari_viewer
         super().__init__()
 
+        # main class for drift correction
+        self.ist = None
+
         self.main_layout = QVBoxLayout()
 
         self._init_input_layer_selection()
@@ -413,12 +416,12 @@ class CorrectDriftDock(QWidget):
 
             if len(roi_layer.data) == 0:
                 raise RuntimeWarning(
-                    f"'Use ROI' is checked, but there is not ROI layer in '{self.ROI_LAYER_NAME}' shapes layer"
+                    f"'Use ROI' is checked, but there is no shape layer with name '{self.ROI_LAYER_NAME}'"
                 )
 
             if len(roi_layer.data) > 1:
-                print(
-                    "Warning: More than one ROI in shape layer, using first..."
+                notifications.show_info(
+                    f"More than one ROI in '{self.ROI_LAYER_NAME}' shape layer, using first..."
                 )
 
             shape_poly = roi_layer.data[0]
@@ -470,6 +473,10 @@ class CorrectDriftDock(QWidget):
         )
 
     def apply_drift(self):
+        if self.ist is None:
+            notifications.show_warning("Estimate or load drift first")
+            return
+
         image_corrected = self.ist.apply_drifts(
             self.drift_table.get_content(),
             extend_output=self.extend_output.isChecked(),
@@ -477,7 +484,7 @@ class CorrectDriftDock(QWidget):
 
         img_layer = self.viewer.add_image(
             image_corrected,
-            name=f"{self.get_current_input_layer().name} (corr)",
+            name=f"{self.get_current_input_layer().name} (corrected)",
         )
         img_layer.editable = False
 

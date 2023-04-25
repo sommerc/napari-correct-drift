@@ -393,6 +393,7 @@ class ISTabilizer:
             desc=f"Estimate drift (relative to frame '{t0}')",
         ):
             if (r == t0) and (roi is not None):
+                # reset ROI, now it goes downward
                 mov_bbox = roi_t0.bbox.copy()
 
             ref_img = self.data[r, channel]
