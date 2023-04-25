@@ -106,6 +106,9 @@ class CorrectDriftDock(QWidget):
             for d, combo in self.axis_combos.items():
                 axis_layout.addWidget(QLabel(f"Axis {d} is: "), d + 1, 0)
                 axis_layout.addWidget(combo, d + 1, 1)
+                combo.setToolTip(
+                    f"Define which dimension Axis {d} corresponds to. 'Time' needs to be selected"
+                )
 
         self.input_layer.currentIndexChanged.connect(update_axes_selection)
 
@@ -164,12 +167,12 @@ class CorrectDriftDock(QWidget):
         i = 1
 
         # stabilize relative to
-        self.estimate_drift_type = QComboBox()
-        self.estimate_drift_type.addItem("previous frame")
-        self.estimate_drift_type.addItem("absolute frame")
+        self.estimate_drift_mode = QComboBox()
+        self.estimate_drift_mode.addItem("previous frame")
+        self.estimate_drift_mode.addItem("absolute frame")
 
         key_and_roi_layout.addWidget(QLabel("Relative to: "), i, 0)
-        key_and_roi_layout.addWidget(self.estimate_drift_type, i, 1)
+        key_and_roi_layout.addWidget(self.estimate_drift_mode, i, 1)
         i += 1
 
         # key frame
@@ -272,13 +275,53 @@ class CorrectDriftDock(QWidget):
         self.setLayout(self.main_layout)
 
     def _init_tool_tips(self):
+        self.input_layer.setToolTip("Select input layer for drift correction")
+
+        self.estimate_drift_button.setToolTip("Estimate drift")
+        self.load_drift_button.setToolTip("Load drift from .csv")
+        self.apply_drift_button.setToolTip("Apply drift shown in dirft table")
+
+        self.estimate_drift_mode.setToolTip(
+            (
+                "Mode for drift estimation:\n"
+                " - relative: estimate from previous frame. ROI will move along!\n"
+                " - absolute: estimate against absolute frame                    "
+            )
+        )
+
         self.key_frame.setToolTip(
-            """The frame number that should be stabilized during drift correction. 
-            When ROI is enabled, the value is inferred from the ROI."""
+            (
+                "The frame number that should be stabilized during drift correction.\n"
+                "When ROI is enabled, the value is inferred from the ROI.            "
+            )
         )
         self.key_channel.setToolTip(
-            """The channel number that should be stabilized during drift correction. 
-            When ROI is enabled, the value is inferred from the ROI."""
+            (
+                "The channel number that should be stabilized during drift correction.\n"
+                "When ROI is enabled, the value is inferred from the ROI.              "
+            )
+        )
+
+        self.roi_checkbox.setToolTip(
+            "Use ROI from 'ROI' shape layer. By default 1st ROI is used"
+        )
+        self.roi_z_min.setToolTip("Minimum z-plane for the ROI")
+        self.roi_z_max.setToolTip("Maximum z-plane for the ROI")
+
+        self.increment_box.setToolTip(
+            (
+                "Time increment for drift estimation. Useful for faster estimation and \n"
+                "slow drifts. Skipped frames will be linearly interpolated.              "
+            )
+        )
+        self.upsample_box.setToolTip(
+            "Subpixel drift estimation. Useful for slow drifts"
+        )
+        self.extend_output.setToolTip(
+            (
+                "Apply drifts with extended spatial dimensions. The raw image frames will\n"
+                "be fully contained in the output.                                         "
+            )
         )
 
     def _init_other_params(self):
@@ -350,7 +393,7 @@ class CorrectDriftDock(QWidget):
 
         # relative or absolute
         estimate_mode = ["relative", "absolute"][
-            self.estimate_drift_type.currentIndex()
+            self.estimate_drift_mode.currentIndex()
         ]
 
         # channel
