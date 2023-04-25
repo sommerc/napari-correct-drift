@@ -12,18 +12,55 @@ from napari.utils import progress
 
 class ArrayAxesStandardizer:
     """
-    Example:
+    A class designed to standardize the axes of numpy arrays.
 
-    img = np.zeros((8,3,64,128))
-    in_order  = "zcxy"
-    out_order = "tczxy"
-    ara = ArrayRearranger(out_order, in_order)
-    print("initial shape     :", img.shape, in_order)
-    print("arranged in shape :", ara(img).shape, out_order)
-    print("inverted shape    :", ara.inv(a(img)).shape, in_order)
+    Attributes:
+        out_order (str): string representing the desired output order of the array axes
+        in_order (str): string representing the current order of the array axes
+
+        out_order and in_order are given as string containing t,c,z,y,x
+
+    Methods:
+        __init__(self, out_order: str, in_order: str):
+            Initializes the class and checks for any invalid inputs.
+
+        _check_order_str(self, order: str):
+            Checks for any duplicates in the input order.
+
+        __call__(self, data: np.array):
+            Takes in an input numpy array and standardizes the axes according to the output order.
+            It returns the standardized array view.
+
+        inv(self, data: np.array):
+            Takes in a standardized numpy array and reverts the axes back to the original order.
+            It returns the reverted array.
+
+        inverse_permutation(a):
+            A static method that returns the inverse permutation of an input permutation.
+
+    Parameters:
+        out_order (str): a string representing the desired output order of the array axes.
+        in_order (str): a string representing the current order of the array axes.
+        data (np.array): a numpy array that needs to be standardized or reverted.
+        a (np.array): an input permutation.
+
+    Return Value:
+        __call__(self, data: np.array): A standardized numpy array.
+        inv(self, data: np.array): A numpy array with the original axis order.
+        inverse_permutation(a): An inverse permutation of the input permutation.
     """
 
-    def __init__(self, out_order, in_order):
+    def __init__(self, out_order: str, in_order: str):
+        """
+        Initializes the class and checks for any invalid inputs.
+
+        Args:
+            out_order (str): A string representing the desired output order of the array axes.
+            in_order (str): A string representing the current order of the array axes.
+
+        Raises:
+            AssertionError: If in_order contains any elements not in out_order or if out_order or in_order contains duplicates.
+        """
         self._check_order_str(out_order)
         self._check_order_str(in_order)
 
@@ -34,12 +71,35 @@ class ArrayAxesStandardizer:
         self.out_order = out_order
         self.in_order = in_order
 
-    def _check_order_str(self, order):
+    def _check_order_str(self, order: str):
+        """
+        Checks for any duplicates in the input order.
+
+        Args:
+            order (str): A string representing the current order of the array axes.
+
+        Raises:
+            AssertionError: If order contains duplicates.
+        """
         assert len(set(order)) == len(
             order
         ), f"Duplicates in order found: '{order}'"
 
-    def __call__(self, data):
+    def __call__(self, data: np.array):
+        """
+        Takes in an input numpy array and standardizes the axes according to the output order.
+        It returns the standardized array.
+
+        Args:
+            data (np.array): A numpy array that needs to be standardized.
+
+        Returns:
+            np.array: A standardized numpy array.
+
+        Raises:
+            AssertionError: If the shape of the input array does not match the input order.
+        """
+
         assert len(data.shape) == len(
             self.in_order
         ), f"Shape mismatch. Data shape is '{data.shape}', but in order is '{self.in_order}'"
@@ -53,7 +113,22 @@ class ArrayAxesStandardizer:
         assert not data_rearranged.flags["OWNDATA"], "not a view??"
         return data_rearranged
 
-    def inv(self, data):
+    def inv(self, data: np.array):
+        """
+        Applies the inverse transform to the input data. The input data is expected to be a numpy array with the shape
+        specified by the 'out_order' argument passed to the constructor. The output is a numpy array with the shape
+        specified by the 'in_order' argument passed to the constructor.
+
+        Args:
+            data (np.array): The input data to be transformed.
+
+        Returns:
+            np.array: The transformed data.
+
+        Raises:
+            AssertionError: If the input data does not have the same shape as specified by the 'out_order' argument.
+        """
+
         assert len(data.shape) == len(
             self.out_order
         ), f"Shape mismaatch. Data shape is '{data.shape}', but in order is '{self.out_order}'"
@@ -63,12 +138,10 @@ class ArrayAxesStandardizer:
             j = self.in_order.find(dim)
             permute.append(j) if j > -1 else missing.append(i)
 
-        # print(data.shape, permute, missing)
         res = np.transpose(
             np.squeeze(data, axis=tuple(missing)),
             self.inverse_permutation(permute),
         )
-        assert not res.flags["OWNDATA"], "not a view??"
         return res
 
     @staticmethod
@@ -79,7 +152,17 @@ class ArrayAxesStandardizer:
 
 
 class ROIRect:
-    def __init__(self, x_min, x_max, y_min, y_max, z_min, z_max, t0, c0):
+    def __init__(
+        self,
+        x_min: int,
+        x_max: int,
+        y_min: int,
+        y_max: int,
+        z_min: int,
+        z_max: int,
+        t0: int,
+        c0: int,
+    ):
         self.x_min = x_min
         self.x_max = x_max
 
@@ -100,7 +183,9 @@ class ROIRect:
         assert self.x_max > self.x_min > -1, "x-dim mismatch"
 
     @classmethod
-    def from_shape_poly(cls, shape_poly, dims, z_min, z_max):
+    def from_shape_poly(
+        cls, shape_poly: np.array, dims: str, z_min: int, z_max: int
+    ):
         p_min = shape_poly.min(0)
         p_max = shape_poly.max(0)
 
@@ -125,7 +210,7 @@ class ROIRect:
         return cls(x_min, x_max, y_min, y_max, z_min, z_max, t0, c0)
 
     @classmethod
-    def from_bbox(cls, bbox, t0, c0):
+    def from_bbox(cls, bbox: np.array, t0: int, c0: int):
         return cls(
             bbox[4], bbox[5], bbox[2], bbox[3], bbox[0], bbox[1], t0, c0
         )
@@ -164,6 +249,48 @@ class ROIRect:
 
 
 class ISTabilizer:
+    """
+    Class for drift correction of microscopy images.
+
+    Parameters
+    ----------
+    data : np.array
+        The input data, with dimensions ordered according to the given `dims`.
+    dims : str
+        The dimension order of the input data. Must include axes 't', 'x', and 'y'.
+
+    Attributes
+    ----------
+    is_multi_channel : bool
+        True if the data has multiple channels.
+    is_3d : bool
+        True if the data has a z dimension.
+    dims : str
+        The dimension order of the input data.
+    data_arranger : ArrayAxesStandardizer
+        An ArrayAxesStandardizer instance used to rearrange the input data.
+    data : np.array
+        The rearranged input data.
+    T, C, Z, Y, X : int
+        The number of time points, channels, z-slices, rows, and columns in the input data.
+
+    Methods
+    -------
+    estimate_shifts_absolute(t0=0, channel=0, increment=1, upsample_factor=1, roi=None)
+        Estimates the absolute shifts for each time point using cross-correlation.
+    iter_abs(T, t0, step)
+        An iterator that generates time points for estimating absolute shifts.
+    estimate_shifts_relative(t0=0, step=1, upsample_factor=1, roi=None)
+        Estimates the relative shifts for each time point using cross-correlation.
+    iter_rel(T, t0, step)
+        An iterator that generates time points for estimating relative shifts.
+    interpolate_offsets(offsets)
+        Interpolates any missing offsets using linear interpolation.
+    apply_shifts(offsets, extend_output=False, order=1, mode='constant')
+        Applies the given offsets to the input data to correct for drift.
+
+    """
+
     def __init__(self, data: np.array, dims: str):
         assert (
             "t" in dims
@@ -271,7 +398,7 @@ class ISTabilizer:
 
         return offsets
 
-    def interpolate_offsets(self, offsets):
+    def interpolate_offsets(self, offsets: np.array):
         x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
         m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
         y = offsets[x, :]
