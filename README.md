@@ -14,7 +14,7 @@ Napari-correct-drift supports drift correction for 2D/3D multi-channel data.
 ----------------------------------
 ## Example
 
-**to come**
+*to come soon*
 
 
 ## Test data
@@ -40,8 +40,8 @@ To install latest development version :
 - [x] 2D/3D multi-channel support
 - [x] ROI support
 - [x] Saving and loading of drift tables
-- [ ] [pyGPUreg](https://github.com/bionanopatterning/pyGPUreg) backend 
-- [ ] Outlier handling 
+- [ ] [pyGPUreg](https://github.com/bionanopatterning/pyGPUreg) backend
+- [ ] Outlier handling
 - [ ] Speed optimizations
 - [ ] Sphinx documentation
 - [ ] How-tos
@@ -56,4 +56,3 @@ the coverage at least stays the same before you submit a pull request.
 
 Distributed under the terms of the [BSD-3] license,
 "napari-correct-drift" is free and open source software
-
