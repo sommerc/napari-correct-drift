@@ -1,13 +1,13 @@
 import numpy as np
 
-from napari_correct_drift._core import ISTabilizer, ROIRect
+from napari_correct_drift._core import CorrectDrift, ROIRect
 from napari_correct_drift._sample_data import Example_TYX, Example_TZYX
 
 
 def test_tyx():
     example = Example_TYX()
     img_2d = example.create()
-    ist_2d = ISTabilizer(img_2d, "tyx")
+    ist_2d = CorrectDrift(img_2d, "tyx")
 
     for t0 in [0, 17]:
         ofs = ist_2d._estimate_drift_absolute(t0)
@@ -18,7 +18,7 @@ def test_tyx():
 def test_tzyx():
     example = Example_TZYX()
     img_3d = example.create()
-    ist_3d = ISTabilizer(img_3d, "tzyx")
+    ist_3d = CorrectDrift(img_3d, "tzyx")
 
     for t0 in [0, 16]:
         ofs = ist_3d._estimate_drift_absolute(t0)
@@ -30,7 +30,7 @@ def test_tcyx():
     example = Example_TYX()
     img_2d = example.create()
     img_2d = np.stack([img_2d, img_2d // 2], axis=1)
-    ist_2d = ISTabilizer(img_2d, "tcyx")
+    ist_2d = CorrectDrift(img_2d, "tcyx")
 
     for t0 in [0, 7]:
         ofs = ist_2d._estimate_drift_absolute(t0, channel=0)
@@ -43,7 +43,7 @@ def test_tczyx():
     img_3d = example.create()
 
     img_3d = np.stack([img_3d, img_3d // 2], axis=1)
-    ist_3d = ISTabilizer(img_3d, "tczyx")
+    ist_3d = CorrectDrift(img_3d, "tczyx")
 
     for t0 in [0, 16]:
         ofs = ist_3d._estimate_drift_absolute(t0, channel=0)
@@ -54,7 +54,7 @@ def test_tczyx():
 def test_tyx_roi():
     example = Example_TYX()
     img_2d = example.create()
-    ist_2d = ISTabilizer(img_2d, "tyx")
+    ist_2d = CorrectDrift(img_2d, "tyx")
 
     poly2d = np.array(
         [
@@ -76,7 +76,7 @@ def test_tyx_roi():
 def test_tzyx_roi():
     example = Example_TZYX()
     img_3d = example.create()
-    ist_3d = ISTabilizer(img_3d, "tzyx")
+    ist_3d = CorrectDrift(img_3d, "tzyx")
 
     poly_3d = np.array(
         [
@@ -101,7 +101,7 @@ def test_tczyx_roi():
 
     img_3d = np.stack([img_3d, img_3d[::-1]], axis=1)
 
-    ist_3d = ISTabilizer(img_3d, "tczyx")
+    ist_3d = CorrectDrift(img_3d, "tczyx")
 
     poly_3d = np.array(
         [
@@ -125,7 +125,7 @@ def test_tczyx_roi():
 def test_tyx_rel():
     example = Example_TYX()
     img_2d = example.create()
-    ist_2d = ISTabilizer(img_2d, "tyx")
+    ist_2d = CorrectDrift(img_2d, "tyx")
 
     for t0 in [0, 6, 13]:
         ofs = ist_2d._estimate_drift_relative(t0)
@@ -139,7 +139,7 @@ def test_tczyx_rel():
 
     img_3d = np.stack([img_3d, img_3d[:, ::-1] // 2], axis=1)
 
-    ist_3d = ISTabilizer(img_3d, "tczyx")
+    ist_3d = CorrectDrift(img_3d, "tczyx")
 
     for t0 in [0, 16]:
         ofs = ist_3d._estimate_drift_relative(t0, channel=0)
@@ -150,7 +150,7 @@ def test_tczyx_rel():
 def test_tyx_roi_rel():
     example = Example_TYX()
     img_2d = example.create()
-    ist_2d = ISTabilizer(img_2d, "tyx")
+    ist_2d = CorrectDrift(img_2d, "tyx")
 
     poly2d = np.array(
         [
@@ -174,7 +174,7 @@ def test_zcyx_roi_rel():
     img_3d = example.create()
 
     img_3d = np.stack([img_3d, img_3d[::-1]], axis=1)
-    ist_3d = ISTabilizer(img_3d, "tczyx")
+    ist_3d = CorrectDrift(img_3d, "tczyx")
 
     poly_3d = np.array(
         [
@@ -204,7 +204,7 @@ def test_zcyx_roi_rel():
 def test_tyx_big_roi_rel():
     example = Example_TYX()
     img_2d = example.create()
-    ist_2d = ISTabilizer(img_2d, "tyx")
+    ist_2d = CorrectDrift(img_2d, "tyx")
 
     poly2d = np.array(
         [

@@ -1,7 +1,7 @@
 __version__ = "0.1.0"
 from ._sample_data import sample_2d, sample_3d, sample_3d_ch
 from ._widget import CorrectDriftDock, TableWidget
-from ._core import ISTabilizer, ArrayAxesStandardizer, ROIRect
+from ._core import CorrectDrift, ArrayAxesStandardizer, ROIRect
 
 
 __all__ = (
@@ -10,7 +10,7 @@ __all__ = (
     "sample_3d_ch",
     "CorrectDriftDock",
     "TableWidget",
-    "ISTabilizer",
+    "CorrectDrift",
     "ArrayAxesStandardizer",
     "ROIRect",
 )

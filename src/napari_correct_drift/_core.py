@@ -250,7 +250,7 @@ class ROIRect:
         """
 
 
-class ISTabilizer:
+class CorrectDrift:
     """
     Class for drift correction of microscopy images.
 

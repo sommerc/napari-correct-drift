@@ -33,7 +33,7 @@ from qtpy.QtWidgets import (
     QTableView,
 )
 
-from ._core import ISTabilizer, ROIRect
+from ._core import CorrectDrift, ROIRect
 from pandas import DataFrame, read_csv
 import numpy as np
 
@@ -259,7 +259,7 @@ class CorrectDriftDock(QWidget):
         super().__init__()
 
         # main class for drift correction
-        self.ist = None
+        self.CorrDrift = None
 
         self.main_layout = QVBoxLayout()
 
@@ -381,12 +381,12 @@ class CorrectDriftDock(QWidget):
                 "Dimensions are not unique. Choose each dimensions only once"
             )
 
-        self.ist = ISTabilizer(
+        self.CorrDrift = CorrectDrift(
             image,
             dims,
         )
 
-        return self.ist
+        return self.CorrDrift
 
     def estimate_drift(self):
         self._check_input()
@@ -427,12 +427,12 @@ class CorrectDriftDock(QWidget):
             shape_poly = roi_layer.data[0]
             roi = ROIRect.from_shape_poly(
                 shape_poly,
-                self.ist.dims,
+                self.CorrDrift.dims,
                 z_min=self.roi_z_min.value(),
                 z_max=self.roi_z_max.value(),
             )
 
-        drift_shifts = self.ist.estimate_drift(
+        drift_shifts = self.CorrDrift.estimate_drift(
             t0=key_frame,
             channel=key_channel,
             increment=increment,
@@ -442,9 +442,9 @@ class CorrectDriftDock(QWidget):
         )
 
         if increment > 1:
-            drift_shifts = self.ist.interpolate_drift(drift_shifts)
+            drift_shifts = self.CorrDrift.interpolate_drift(drift_shifts)
 
-        self.drift_table = TableWidget(self.viewer, self.ist)
+        self.drift_table = TableWidget(self.viewer, self.CorrDrift)
         self.drift_table.set_content(drift_shifts)
 
         self.viewer.window.add_dock_widget(
@@ -462,7 +462,7 @@ class CorrectDriftDock(QWidget):
 
         self._check_input()
 
-        self.drift_table = TableWidget(self.viewer, self.ist)
+        self.drift_table = TableWidget(self.viewer, self.CorrDrift)
         self.drift_table.load(filename=filename)
 
         self.viewer.window.add_dock_widget(
@@ -473,11 +473,11 @@ class CorrectDriftDock(QWidget):
         )
 
     def apply_drift(self):
-        if self.ist is None:
+        if self.CorrDrift is None:
             notifications.show_warning("Estimate or load drift first")
             return
 
-        image_corrected = self.ist.apply_drifts(
+        image_corrected = self.CorrDrift.apply_drifts(
             self.drift_table.get_content(),
             extend_output=self.extend_output.isChecked(),
         )
@@ -493,7 +493,7 @@ class TableWidget(QWidget):
     """ """
 
     def __init__(
-        self, ist: ISTabilizer = None, viewer: "napari.Viewer" = None
+        self, ist: CorrectDrift = None, viewer: "napari.Viewer" = None
     ):
         super().__init__()
 

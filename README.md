@@ -7,19 +7,18 @@
 [![codecov](https://codecov.io/gh/sommerc/napari-correct-drift/branch/main/graph/badge.svg)](https://codecov.io/gh/sommerc/napari-correct-drift)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-correct-drift)](https://napari-hub.org/plugins/napari-correct-drift)
 
-Drift correction 2D/3D for Napari similar to Fiji's Correct 3D drift
+Napari-correct-drift brings the functionality of Fiji’s popular Correct-3D-drift macro to Napari for flexible and efficient correction of stage and sample drift common in time-lapse microscopy.
+
+Napari-correct-drift supports drift correction for 2D/3D multi-channel data.
 
 ----------------------------------
+## Example
 
-This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
+**to come**
 
-<!--
-Don't miss the full getting started guide to set up your new package:
-https://github.com/napari/cookiecutter-napari-plugin#getting-started
 
-and review the napari docs for plugin developers:
-https://napari.org/stable/plugins/index.html
--->
+## Test data
+Napari-correct-drift contains synthetic sample data. To test it on real data download an example Arabidopsis growing [root tip](https://seafile.ist.ac.at/f/b05362d4f358430c8c59/?dl=1) file.
 
 ## Installation
 
@@ -33,6 +32,20 @@ To install latest development version :
 
     pip install git+https://github.com/sommerc/napari-correct-drift.git
 
+## Roadmap
+
+- [x] Basic CorrectDrift interface
+- [x] Synthetic test data
+- [x] Unit tests
+- [x] 2D/3D multi-channel support
+- [x] ROI support
+- [x] Saving and loading of drift tables
+- [ ] [pyGPUreg](https://github.com/bionanopatterning/pyGPUreg) backend 
+- [ ] Outlier handling 
+- [ ] Speed optimizations
+- [ ] Sphinx documentation
+- [ ] How-tos
+- [ ] Tutorials and Guides
 
 ## Contributing
 
@@ -43,26 +56,4 @@ the coverage at least stays the same before you submit a pull request.
 
 Distributed under the terms of the [BSD-3] license,
 "napari-correct-drift" is free and open source software
-
-## Issues
-
-If you encounter any problems, please [file an issue] along with a detailed description.
-
-[napari]: https://github.com/napari/napari
-[Cookiecutter]: https://github.com/audreyr/cookiecutter
-[@napari]: https://github.com/napari
-[MIT]: http://opensource.org/licenses/MIT
-[BSD-3]: http://opensource.org/licenses/BSD-3-Clause
-[GNU GPL v3.0]: http://www.gnu.org/licenses/gpl-3.0.txt
-[GNU LGPL v3.0]: http://www.gnu.org/licenses/lgpl-3.0.txt
-[Apache Software License 2.0]: http://www.apache.org/licenses/LICENSE-2.0
-[Mozilla Public License 2.0]: https://www.mozilla.org/media/MPL/2.0/index.txt
-[cookiecutter-napari-plugin]: https://github.com/napari/cookiecutter-napari-plugin
-
-[file an issue]: https://github.com/sommerc/napari-correct-drift/issues
-
-[napari]: https://github.com/napari/napari
-[tox]: https://tox.readthedocs.io/en/latest/
-[pip]: https://pypi.org/project/pip/
-[PyPI]: https://pypi.org/
 
