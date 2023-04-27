@@ -8,14 +8,13 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
+import numpy as np
 from napari.layers.image.image import Image as IMAGE_LAYER
 from napari.layers.shapes.shapes import Shapes as SHAPE_LAYER
 from napari.utils import notifications
-from numpy.lib.arraysetops import isin
-from qtpy.QtCore import Qt
-from qtpy.QtCore import QAbstractTableModel
+from pandas import DataFrame, read_csv
+from qtpy.QtCore import QAbstractTableModel, Qt
 from qtpy.QtWidgets import (
-    QButtonGroup,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -24,18 +23,13 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSlider,
     QSpinBox,
-    QTableWidget,
+    QTableView,
     QVBoxLayout,
     QWidget,
-    QTableWidgetItem,
-    QTableView,
 )
 
 from ._core import CorrectDrift, ROIRect
-from pandas import DataFrame, read_csv
-import numpy as np
 
 if TYPE_CHECKING:
     import napari
@@ -207,6 +201,9 @@ class CorrectDriftDock(QWidget):
                 else:
                     ndim = self.get_current_input_layer().ndim
                     self.viewer.add_shapes(name=self.ROI_LAYER_NAME, ndim=ndim)
+                    notifications.show_info(
+                        f"Add a ROI to the created '{self.ROI_LAYER_NAME}' shape layer. \nThe ROI's key frame / channel will be used"
+                    )
 
         def toggle_z_selection(checked):
             for w in self.z_roi_sel_widgets:
@@ -285,24 +282,18 @@ class CorrectDriftDock(QWidget):
         self.apply_drift_button.setToolTip("Apply drift shown in dirft table")
 
         self.estimate_drift_mode.setToolTip(
-            (
-                "Mode for drift estimation:\n"
-                " - relative: estimate from previous frame. ROI will move along!\n"
-                " - absolute: estimate against absolute frame                    "
-            )
+            "Mode for drift estimation:\n"
+            " - relative: estimate from previous frame. ROI will move along!\n"
+            " - absolute: estimate against absolute frame                    "
         )
 
         self.key_frame.setToolTip(
-            (
-                "The frame number that should be stabilized during drift correction.\n"
-                "When ROI is enabled, the value is inferred from the ROI.            "
-            )
+            "The frame number that should be stabilized during drift correction.\n"
+            "When ROI is enabled, the value is inferred from the ROI.            "
         )
         self.key_channel.setToolTip(
-            (
-                "The channel number that should be stabilized during drift correction.\n"
-                "When ROI is enabled, the value is inferred from the ROI.              "
-            )
+            "The channel number that should be stabilized during drift correction.\n"
+            "When ROI is enabled, the value is inferred from the ROI.              "
         )
 
         self.roi_checkbox.setToolTip(
@@ -312,19 +303,15 @@ class CorrectDriftDock(QWidget):
         self.roi_z_max.setToolTip("Maximum z-plane for the ROI")
 
         self.increment_box.setToolTip(
-            (
-                "Time increment for drift estimation. Useful for faster estimation and \n"
-                "slow drifts. Skipped frames will be linearly interpolated.              "
-            )
+            "Time increment for drift estimation. Useful for faster estimation and \n"
+            "slow drifts. Skipped frames will be linearly interpolated.              "
         )
         self.upsample_box.setToolTip(
             "Subpixel drift estimation. Useful for slow drifts"
         )
         self.extend_output.setToolTip(
-            (
-                "Apply drifts with extended spatial dimensions. The raw image frames will\n"
-                "be fully contained in the output.                                         "
-            )
+            "Apply drifts with extended spatial dimensions. The raw image frames will\n"
+            "be fully contained in the output.                                         "
         )
 
     def _init_other_params(self):
