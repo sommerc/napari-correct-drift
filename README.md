@@ -16,7 +16,6 @@ Napari-correct-drift supports drift correction for 2D/3D multi-channel data.
 
 *to come soon*
 
-
 ## Test data
 Napari-correct-drift contains synthetic sample data. To test it on real data download an example Arabidopsis growing [root tip](https://seafile.ist.ac.at/f/b05362d4f358430c8c59/?dl=1) file.
 
@@ -38,7 +37,7 @@ To install latest development version :
 - [x] Synthetic test data
 - [x] Unit tests
 - [x] 2D/3D multi-channel support
-- [x] ROI support
+- [x] ROI support (rectangles)
 - [x] Saving and loading of drift tables
 - [ ] [pyGPUreg](https://github.com/bionanopatterning/pyGPUreg) backend
 - [ ] Outlier handling
@@ -56,3 +55,6 @@ the coverage at least stays the same before you submit a pull request.
 
 Distributed under the terms of the [BSD-3] license,
 "napari-correct-drift" is free and open source software
+
+### Acknowledgment
+This project has been made possible in part by grant number NP2-0000000051 from the napari Plugin Foundations Grants (Cycle 2).
