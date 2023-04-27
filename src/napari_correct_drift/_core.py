@@ -1,13 +1,10 @@
-"""
-doc
-"""
+import warnings
 
 import numpy as np
-from scipy.ndimage import shift
-from scipy.interpolate import interp1d
-from skimage.registration import phase_cross_correlation
-
 from napari.utils import progress
+from scipy.interpolate import interp1d
+from scipy.ndimage import shift
+from skimage.registration import phase_cross_correlation
 
 
 class ArrayAxesStandardizer:
@@ -15,10 +12,12 @@ class ArrayAxesStandardizer:
     A class designed to standardize the axes of numpy arrays.
 
     Attributes:
-        out_order (str): string representing the desired output order of the array axes
-        in_order (str): string representing the current order of the array axes
+        out_order (str): string representing the desired output
+        order of the array axes in_order (str): string representing
+        the current order of the array axes
 
-        out_order and in_order are given as string containing t,c,z,y,x
+        out_order and in_order are given as string containing
+        t,c,z,y,x
 
     Methods:
         __init__(self, out_order: str, in_order: str):
@@ -28,26 +27,34 @@ class ArrayAxesStandardizer:
             Checks for any duplicates in the input order.
 
         __call__(self, data: np.array):
-            Takes in an input numpy array and standardizes the axes according to the output order.
+            Takes in an input numpy array and standardizes the
+            axes according to the output order.
             It returns the standardized array view.
 
         inv(self, data: np.array):
-            Takes in a standardized numpy array and reverts the axes back to the original order.
+            Takes in a standardized numpy array and reverts the
+            axes back to the original order.
             It returns the reverted array.
 
         inverse_permutation(a):
-            A static method that returns the inverse permutation of an input permutation.
+            A static method that returns the inverse permutation
+            of an input permutation.
 
     Parameters:
-        out_order (str): a string representing the desired output order of the array axes.
-        in_order (str): a string representing the current order of the array axes.
-        data (np.array): a numpy array that needs to be standardized or reverted.
+        out_order (str): a string representing the desired output
+        order of the array axes.
+        in_order (str): a string representing the current order
+        of the array axes.
+        data (np.array): a numpy array that needs to be
+        standardized or reverted.
         a (np.array): an input permutation.
 
     Return Value:
         __call__(self, data: np.array): A standardized numpy array.
-        inv(self, data: np.array): A numpy array with the original axis order.
-        inverse_permutation(a): An inverse permutation of the input permutation.
+        inv(self, data: np.array): A numpy array with the original
+        axis order.
+        inverse_permutation(a): An inverse permutation of the input
+        permutation.
     """
 
     def __init__(self, out_order: str, in_order: str):
@@ -55,11 +62,14 @@ class ArrayAxesStandardizer:
         Initializes the class and checks for any invalid inputs.
 
         Args:
-            out_order (str): A string representing the desired output order of the array axes.
-            in_order (str): A string representing the current order of the array axes.
+            out_order (str): A string representing the desired output
+            order of the array axes.
+            in_order (str): A string representing the current order of
+            the array axes.
 
         Raises:
-            AssertionError: If in_order contains any elements not in out_order or if out_order or in_order contains duplicates.
+            AssertionError: If in_order contains any elements not in
+            out_order or if out_order or in_order contains duplicates.
         """
         self._check_order_str(out_order)
         self._check_order_str(in_order)
@@ -76,7 +86,8 @@ class ArrayAxesStandardizer:
         Checks for any duplicates in the input order.
 
         Args:
-            order (str): A string representing the current order of the array axes.
+            order (str): A string representing the current order of
+            the array axes.
 
         Raises:
             AssertionError: If order contains duplicates.
@@ -87,7 +98,8 @@ class ArrayAxesStandardizer:
 
     def __call__(self, data: np.array):
         """
-        Takes in an input numpy array and standardizes the axes according to the output order.
+        Takes in an input numpy array and standardizes the axes according
+        to the output order.
         It returns the standardized array.
 
         Args:
@@ -97,12 +109,14 @@ class ArrayAxesStandardizer:
             np.array: A standardized numpy array.
 
         Raises:
-            AssertionError: If the shape of the input array does not match the input order.
+            AssertionError: If the shape of the input array does not match
+            the input order.
         """
 
-        assert len(data.shape) == len(
-            self.in_order
-        ), f"Shape mismatch. Data shape is '{data.shape}', but in order is '{self.in_order}'"
+        assert len(data.shape) == len(self.in_order), (
+            f"Shape mismatch. Data shape is '{data.shape}'"
+            ", but in order is '{self.in_order}'"
+        )
         permute = []
         missing = []
         for i, dim in enumerate(self.out_order):
@@ -115,8 +129,10 @@ class ArrayAxesStandardizer:
 
     def inv(self, data: np.array):
         """
-        Applies the inverse transform to the input data. The input data is expected to be a numpy array with the shape
-        specified by the 'out_order' argument passed to the constructor. The output is a numpy array with the shape
+        Applies the inverse transform to the input data. The input data
+        is expected to be a numpy array with the shape
+        specified by the 'out_order' argument passed to the constructor.
+        The output is a numpy array with the shape
         specified by the 'in_order' argument passed to the constructor.
 
         Args:
@@ -126,12 +142,14 @@ class ArrayAxesStandardizer:
             np.array: The transformed data.
 
         Raises:
-            AssertionError: If the input data does not have the same shape as specified by the 'out_order' argument.
+            AssertionError: If the input data does not have the same shape
+            as specified by the 'out_order' argument.
         """
 
-        assert len(data.shape) == len(
-            self.out_order
-        ), f"Shape mismaatch. Data shape is '{data.shape}', but in order is '{self.out_order}'"
+        assert len(data.shape) == len(self.out_order), (
+            f"Shape mismaatch. Data shape is '{data.shape}',"
+            " but in order is '{self.out_order}'"
+        )
         permute = []
         missing = []
         for i, dim in enumerate(self.out_order):
@@ -200,7 +218,7 @@ class ROIRect:
         y_min = int(p_min[-2] + 0.5)
         y_max = int(p_max[-2] + 0.5)
 
-        if not "z" in dims:
+        if "z" not in dims:
             z_min = 0
             z_max = 1
 
@@ -245,7 +263,7 @@ class ROIRect:
         z: {self.z_min}, {self.z_max}
         y: {self.y_min}, {self.y_max}
         x: {self.x_min}, {self.x_max}
-        
+
         bbox: {self.bbox}
         """
 
@@ -257,9 +275,11 @@ class CorrectDrift:
     Parameters
     ----------
     data : np.array
-        The input data, with dimensions ordered according to the given `dims`.
+        The input data, with dimensions ordered according to
+        the given `dims`.
     dims : str
-        The dimension order of the input data. Must include axes 't', 'x', and 'y'.
+        The dimension order of the input data. Must include
+        axes 't', 'x', and 'y'.
 
     Attributes
     ----------
@@ -274,16 +294,20 @@ class CorrectDrift:
     data : np.array
         The rearranged input data.
     T, C, Z, Y, X : int
-        The number of time points, channels, z-slices, rows, and columns in the input data.
+        The number of time points, channels, z-slices, rows, and columns
+        in the input data.
 
     Methods
     -------
-    estimate_shifts_absolute(t0=0, channel=0, increment=1, upsample_factor=1, roi=None)
-        Estimates the absolute shifts for each time point using cross-correlation.
+    estimate_shifts_absolute(t0=0, channel=0, increment=1, upsample_factor=1,
+    roi=None)
+        Estimates the absolute shifts for each time point using cross-
+        correlation.
     iter_abs(T, t0, step)
         An iterator that generates time points for estimating absolute shifts.
     estimate_shifts_relative(t0=0, step=1, upsample_factor=1, roi=None)
-        Estimates the relative shifts for each time point using cross-correlation.
+        Estimates the relative shifts for each time point using cross-
+        correlation.
     iter_rel(T, t0, step)
         An iterator that generates time points for estimating relative shifts.
     interpolate_offsets(offsets)
@@ -422,13 +446,19 @@ class CorrectDrift:
                     : ref_img_crop.shape[2],
                 ] = ref_img_crop
 
-            offset, _, _ = phase_cross_correlation(
-                ref_img,
-                mov_img,
-                upsample_factor=upsample_factor,
-                return_error="always",
-                disambiguate=True,
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    action="ignore",
+                    category=RuntimeWarning,
+                )
+                offset, _, _ = phase_cross_correlation(
+                    ref_img,
+                    mov_img,
+                    upsample_factor=upsample_factor,
+                    return_error="always",
+                    disambiguate=True,
+                )
+
             offset = np.asarray(offset, dtype="float32")
 
             if roi is not None:
@@ -492,13 +522,18 @@ class CorrectDrift:
         ):
             mov_img = self.data[m, channel]
 
-            offset, _, _ = phase_cross_correlation(
-                ref_img,
-                mov_img,
-                upsample_factor=upsample_factor,
-                return_error="always",
-                disambiguate=True,
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    action="ignore",
+                    category=RuntimeWarning,
+                )
+                offset, _, _ = phase_cross_correlation(
+                    ref_img,
+                    mov_img,
+                    upsample_factor=upsample_factor,
+                    return_error="always",
+                    disambiguate=True,
+                )
 
             offset = -np.asarray(offset, dtype="float32")
 
@@ -546,7 +581,7 @@ class CorrectDrift:
             offsets_px = -np.ceil(offsets - offsets.max(0)).astype("int")
             offsets_sub = -(offsets - offsets.max(0)) - offsets_px
 
-            for t in progress(range(self.T), desc=f"Applying drift"):
+            for t in progress(range(self.T), desc="Applying drift"):
                 for c in range(self.C):
                     img = self.data[t, c]
                     output_view = output[
@@ -568,7 +603,7 @@ class CorrectDrift:
 
         else:
             output = np.zeros_like(self.data)
-            for t in progress(range(self.T), desc=f"Applying drift"):
+            for t in progress(range(self.T), desc="Applying drift"):
                 for c in range(self.C):
                     img = self.data[t, c]
                     output[t, c] = shift(
