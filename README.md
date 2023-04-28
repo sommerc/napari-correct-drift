@@ -14,7 +14,8 @@ Napari-correct-drift supports drift correction for 2D/3D multi-channel data.
 ----------------------------------
 ## Example
 
-*to come soon*
+https://user-images.githubusercontent.com/895863/235100349-83379350-06a5-4fe7-9323-f3e5771cca2e.mp4
+
 
 ## Test data
 Napari-correct-drift contains synthetic sample data. To test it on real data download an example Arabidopsis growing [root tip](https://seafile.ist.ac.at/f/b05362d4f358430c8c59/?dl=1) file.
