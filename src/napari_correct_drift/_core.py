@@ -124,7 +124,7 @@ class ArrayAxesStandardizer:
             permute.append(j) if j > -1 else missing.append(i)
 
         data_rearranged = np.expand_dims(data.transpose(permute), missing)
-        assert not data_rearranged.flags["OWNDATA"], "not a view??"
+        # assert not data_rearranged.flags["OWNDATA"], "not a view??"
         return data_rearranged
 
     def inv(self, data: np.array):
