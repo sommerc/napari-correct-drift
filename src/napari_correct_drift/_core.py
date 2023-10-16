@@ -380,16 +380,27 @@ class CorrectDrift:
         increment: int = 1,
         upsample_factor: int = 1,
         roi: ROIRect = None,
+        normalization: str = "phase",
         mode: str = "relative",
     ):
         if mode == "relative":
             return self._estimate_drift_relative(
-                t0, channel, increment, upsample_factor, roi
+                t0,
+                channel,
+                increment,
+                upsample_factor,
+                normalization,
+                roi,
             )
 
         elif mode == "absolute":
             return self._estimate_drift_absolute(
-                t0, channel, increment, upsample_factor, roi
+                t0,
+                channel,
+                increment,
+                upsample_factor,
+                normalization,
+                roi,
             )
 
         else:
@@ -401,6 +412,7 @@ class CorrectDrift:
         channel: int = 0,
         increment: int = 1,
         upsample_factor: int = 1,
+        normalization: str = "phase",
         roi: ROIRect = None,
     ):
         offsets_rel = np.zeros((self.T, 3))
@@ -451,12 +463,14 @@ class CorrectDrift:
                     action="ignore",
                     category=RuntimeWarning,
                 )
+
                 offset, _, _ = phase_cross_correlation(
                     ref_img,
                     mov_img,
                     upsample_factor=upsample_factor,
                     return_error="always",
                     disambiguate=True,
+                    normalization=normalization,
                 )
 
             offset = np.asarray(offset, dtype="float32")
@@ -491,6 +505,7 @@ class CorrectDrift:
         channel: int = 0,
         increment: int = 1,
         upsample_factor: int = 1,
+        normalization: str = "phase",
         roi: ROIRect = None,
     ):
         if not self.is_multi_channel:
@@ -533,6 +548,7 @@ class CorrectDrift:
                     upsample_factor=upsample_factor,
                     return_error="always",
                     disambiguate=True,
+                    normalization=normalization,
                 )
 
             offset = -np.asarray(offset, dtype="float32")

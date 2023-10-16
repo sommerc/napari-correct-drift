@@ -347,6 +347,14 @@ class CorrectDriftDock(QWidget):
         parameter_layout.addWidget(self.extend_output, i, 1)
         i += 1
 
+        # phase normalization
+        self.normalization_box = QCheckBox()
+        self.normalization_box.setChecked(True)
+
+        parameter_layout.addWidget(QLabel("Use phase normalization"), i, 0)
+        parameter_layout.addWidget(self.normalization_box, i, 1)
+        i += 1
+
         parameter_panel.setLayout(parameter_layout)
         self.main_layout.addWidget(parameter_panel)
 
@@ -395,6 +403,11 @@ class CorrectDriftDock(QWidget):
         # get increment
         upsample_factor = self.upsample_box.value()
 
+        # get increment
+        normalization = None
+        if self.normalization_box.isChecked():
+            normalization = "phase"
+
         use_roi = self.roi_checkbox.isChecked()
 
         roi = None
@@ -426,6 +439,7 @@ class CorrectDriftDock(QWidget):
             upsample_factor=upsample_factor,
             roi=roi,
             mode=estimate_mode,
+            normalization=normalization,
         )
 
         if increment > 1:
