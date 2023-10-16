@@ -314,6 +314,11 @@ class CorrectDriftDock(QWidget):
             "be fully contained in the output.                                         "
         )
 
+        self.normalization_box.setToolTip(
+            "Normalization works well in registering images under different illumination.\n"
+            "In a high noise scenario, the un-normalized method may be preferable.         "
+        )
+
     def _init_other_params(self):
         parameter_panel = QGroupBox("Parameters")
         parameter_layout = QGridLayout()
