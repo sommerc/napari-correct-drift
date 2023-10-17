@@ -321,6 +321,24 @@ class CorrectDriftDock(QWidget):
             "In a high noise scenario, the un-normalized method may be preferable.         "
         )
 
+        self.handle_outlier.setToolTip(
+            "Remove large shifts in consecutive time frames (in mode 'previous frame')\n"
+            "and linearly interpolate using from other time points                      "
+        )
+
+        self.max_shift_z.setToolTip(
+            "Maximum relative shift allowed in X. If estimated shift exceeds set value\n"
+            "the exceeding shift is removed and linearly interpolated (in pixel)        "
+        )
+
+        self.max_shift_y.setToolTip(
+            "Maximum relative shift allowed in Y (in pixel)"
+        )
+
+        self.max_shift_x.setToolTip(
+            "Maximum relative shift allowed in X (in pixel)"
+        )
+
     def _init_other_params(self):
         parameter_panel = QGroupBox("Parameters")
         parameter_layout = QGridLayout()
