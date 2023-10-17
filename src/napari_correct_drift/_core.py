@@ -358,6 +358,7 @@ class CorrectDrift:
                 r += step
             else:
                 break
+
         # backward
         r = t0
         while True:
@@ -367,6 +368,7 @@ class CorrectDrift:
                 r -= step
             else:
                 break
+
         # make sure t0 is reference, if t0 < increment
         if 1 <= t0 < step:
             rm.append([t0, 0])
@@ -570,6 +572,12 @@ class CorrectDrift:
 
     def interpolate_drift(self, offsets: np.array):
         x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
+
+        if x.shape[0] < 3:
+            raise RuntimeError(
+                "Too little shift values to interpolate missing shifts. Disable outlier handling and/or use lower increment."
+            )
+
         m = np.nonzero(np.isnan(offsets).any(axis=1))[0]
         y = offsets[x, :]
         offsets[m] = interp1d(
