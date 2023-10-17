@@ -382,6 +382,7 @@ class CorrectDrift:
         roi: ROIRect = None,
         normalization: str = "phase",
         mode: str = "relative",
+        max_shifts: tuple[int, int, int] = None,
     ):
         if mode == "relative":
             return self._estimate_drift_relative(
@@ -391,6 +392,7 @@ class CorrectDrift:
                 upsample_factor,
                 normalization,
                 roi,
+                max_shifts,
             )
 
         elif mode == "absolute":
@@ -414,9 +416,13 @@ class CorrectDrift:
         upsample_factor: int = 1,
         normalization: str = "phase",
         roi: ROIRect = None,
+        max_shifts: tuple = None,
     ):
         offsets_rel = np.zeros((self.T, 3))
         offsets_rel.fill(np.nan)
+
+        if max_shifts is None:
+            max_shifts = [np.Inf] * 3
 
         if roi is not None:
             t0 = roi.t0
@@ -486,9 +492,11 @@ class CorrectDrift:
                 mov_bbox[2:4] = np.clip(mov_bbox[2:4], 0, ref_img.shape[1])
                 mov_bbox[4:] = np.clip(mov_bbox[4:], 0, ref_img.shape[2])
             if m > r:
-                offsets_rel[m] = -offset
+                if not np.any(np.abs(offset) > np.array(max_shifts)):
+                    offsets_rel[m] = -offset
             else:
-                offsets_rel[r] = offset
+                if not np.any(np.abs(offset) > np.array(max_shifts)):
+                    offsets_rel[r] = offset
 
         offsets_rel[0] = 0
         nan_row = np.nonzero(np.isnan(offsets_rel).any(axis=1))[0]

@@ -268,6 +268,8 @@ class CorrectDriftDock(QWidget):
 
         self._init_other_params()
 
+        self._init_outlier_params()
+
         self._init_tool_tips()
 
         self.main_layout.setAlignment(Qt.AlignTop)
@@ -363,6 +365,68 @@ class CorrectDriftDock(QWidget):
         parameter_panel.setLayout(parameter_layout)
         self.main_layout.addWidget(parameter_panel)
 
+    def _init_outlier_params(self):
+        outlier_panel = QGroupBox("Outliers")
+        outlier_layout = QGridLayout()
+        outlier_panel.setLayout(outlier_layout)
+        i = 1
+
+        self.handle_outlier = QCheckBox()
+        self.handle_outlier.setChecked(False)
+
+        outlier_layout.addWidget(QLabel("Remove & Interpolate"), i, 0)
+        outlier_layout.addWidget(self.handle_outlier, i, 1)
+        i += 1
+
+        self.max_shift_z_label = QLabel("Max shift Z")
+        self.max_shift_z = QSpinBox()
+        self.max_shift_z.setMinimum(1)
+        self.max_shift_z.setValue(10)
+
+        outlier_layout.addWidget(self.max_shift_z_label, i, 0)
+        outlier_layout.addWidget(self.max_shift_z, i, 1)
+        i += 1
+
+        self.max_shift_y_label = QLabel("Max shift Y")
+        self.max_shift_y = QSpinBox()
+        self.max_shift_y.setMinimum(1)
+        self.max_shift_y.setValue(10)
+
+        outlier_layout.addWidget(self.max_shift_y_label, i, 0)
+        outlier_layout.addWidget(self.max_shift_y, i, 1)
+        i += 1
+
+        self.max_shift_x_label = QLabel("Max shift X")
+        self.max_shift_x = QSpinBox()
+        self.max_shift_x.setMinimum(1)
+        self.max_shift_x.setValue(10)
+
+        outlier_layout.addWidget(self.max_shift_x_label, i, 0)
+        outlier_layout.addWidget(self.max_shift_x, i, 1)
+        i += 1
+
+        outlier_panel.setLayout(outlier_layout)
+        self.main_layout.addWidget(outlier_panel)
+
+        self.outlier_widgets = [
+            self.max_shift_x_label,
+            self.max_shift_x,
+            self.max_shift_y_label,
+            self.max_shift_y,
+            self.max_shift_z_label,
+            self.max_shift_z,
+        ]
+        for x in self.outlier_widgets:
+            x.setVisible(False)
+
+        def toggle_outlier_selection(checked):
+            for w in self.outlier_widgets:
+                w.setVisible(checked)
+
+        toggle_outlier_selection(False)
+
+        self.handle_outlier.toggled.connect(toggle_outlier_selection)
+
     def _check_input(self):
         layer = self.get_current_input_layer()
         image = layer.data
@@ -437,6 +501,14 @@ class CorrectDriftDock(QWidget):
                 z_max=self.roi_z_max.value(),
             )
 
+        max_shifts = None
+        if self.handle_outlier.isChecked():
+            max_shifts = (
+                self.max_shift_z.value(),
+                self.max_shift_y.value(),
+                self.max_shift_x.value(),
+            )
+
         drift_shifts = self.CorrDrift.estimate_drift(
             t0=key_frame,
             channel=key_channel,
@@ -445,9 +517,10 @@ class CorrectDriftDock(QWidget):
             roi=roi,
             mode=estimate_mode,
             normalization=normalization,
+            max_shifts=max_shifts,
         )
 
-        if increment > 1:
+        if increment > 1 or np.any(np.isnan(drift_shifts)):
             drift_shifts = self.CorrDrift.interpolate_drift(drift_shifts)
 
         self.drift_table = TableWidget(self.viewer, self.CorrDrift)
