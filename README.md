@@ -40,9 +40,7 @@ To install latest development version :
 - [x] 2D/3D multi-channel support
 - [x] ROI support (rectangles)
 - [x] Saving and loading of drift tables
-- [ ] [pyGPUreg](https://github.com/bionanopatterning/pyGPUreg) backend
-- [ ] Outlier handling
-- [ ] Speed optimizations
+- [x] Outlier handling
 - [ ] Sphinx documentation
 - [ ] How-tos
 - [ ] Tutorials and Guides
