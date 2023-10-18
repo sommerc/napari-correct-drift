@@ -8,6 +8,7 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
+import dask.array as da
 import numpy as np
 from napari.layers.image.image import Image as IMAGE_LAYER
 from napari.layers.shapes.shapes import Shapes as SHAPE_LAYER
@@ -448,6 +449,12 @@ class CorrectDriftDock(QWidget):
     def _check_input(self):
         layer = self.get_current_input_layer()
         image = layer.data
+
+        if isinstance(image, da.Array):
+            notifications.show_info(
+                "Input image is a dask-array and needs to be converted to numpy, which might not fit to memory..."
+            )
+            image = image.compute()
 
         # get axis
         dims = ""
