@@ -608,7 +608,7 @@ class CorrectDrift:
 
             # split shifts into integer and subpixel parts.
             # the ndi.shift takes care of subpixel part
-            # the interger shifts are handled via giving an output slice
+            # the integer shifts are handled via giving an output slice
 
             offsets_px = -np.ceil(offsets - offsets.max(0)).astype("int")
             offsets_sub = -(offsets - offsets.max(0)) - offsets_px
@@ -626,7 +626,7 @@ class CorrectDrift:
 
                     shift(
                         img,
-                        -offsets_sub[t],
+                        offsets_sub[t],
                         output=output_view,
                         order=order,
                         mode=mode,
