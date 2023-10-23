@@ -1,4 +1,5 @@
 import warnings
+from typing import Tuple
 
 import numpy as np
 from napari.utils import progress
@@ -384,7 +385,7 @@ class CorrectDrift:
         roi: ROIRect = None,
         normalization: str = "phase",
         mode: str = "relative",
-        max_shifts: tuple[int, int, int] = None,
+        max_shifts: Tuple[int, int, int] = None,
     ):
         if mode == "relative":
             return self._estimate_drift_relative(
