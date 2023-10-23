@@ -135,7 +135,7 @@ class CorrectDriftDock(QWidget):
         tmp_layout.addWidget(self.estimate_drift_button)
         self.estimate_drift_button.clicked.connect(self.estimate_drift)
 
-        # tmp_layout.addWidget(QLabel("  or "))
+        tmp_layout.addWidget(QLabel("  or "))
 
         # load button
         self.load_drift_button = QPushButton("Load Drift")
@@ -144,8 +144,10 @@ class CorrectDriftDock(QWidget):
 
         run_layout.addWidget(tmp_panel)
 
+        tmp_layout.addWidget(QLabel(" then "))
+
         # apply
-        self.apply_drift_button = QPushButton("Apply Drift")
+        self.apply_drift_button = QPushButton("Correct Drift")
         tmp_layout.addWidget(self.apply_drift_button)
         self.apply_drift_button.clicked.connect(self.apply_drift)
 
@@ -282,7 +284,9 @@ class CorrectDriftDock(QWidget):
 
         self.estimate_drift_button.setToolTip("Estimate drift")
         self.load_drift_button.setToolTip("Load drift from .csv")
-        self.apply_drift_button.setToolTip("Apply drift shown in dirft table")
+        self.apply_drift_button.setToolTip(
+            "Correct drift as shown in drift table"
+        )
 
         self.estimate_drift_mode.setToolTip(
             "Mode for drift estimation:\n"
@@ -313,7 +317,7 @@ class CorrectDriftDock(QWidget):
             "Subpixel drift estimation. Useful for slow drifts"
         )
         self.extend_output.setToolTip(
-            "Apply drifts with extended spatial dimensions. The raw image frames will\n"
+            "Correct drifts with extended spatial dimensions. The raw image frames will\n"
             "be fully contained in the output.                                         "
         )
 
@@ -452,7 +456,7 @@ class CorrectDriftDock(QWidget):
 
         if isinstance(image, da.Array):
             notifications.show_info(
-                "Input image is a dask-array and needs to be converted to numpy, which might not fit to memory..."
+                "Input image is a dask-array, converting to numpy..."
             )
             image = image.compute()
 

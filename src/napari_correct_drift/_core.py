@@ -459,6 +459,7 @@ class CorrectDrift:
                 ].copy()
 
                 ref_img = np.zeros_like(ref_img)
+                # ref_img[:] = ref_img_crop.mean()
 
                 ref_img[
                     : ref_img_crop.shape[0],
