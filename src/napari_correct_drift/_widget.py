@@ -598,8 +598,6 @@ class CorrectDriftDock(QWidget):
 
 
 class TableWidget(QWidget):
-    """ """
-
     def __init__(
         self, ist: CorrectDrift = None, viewer: "napari.Viewer" = None
     ):

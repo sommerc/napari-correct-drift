@@ -34,6 +34,11 @@ Napari-Correct-Drift can also be used without starting the Napari viewer.
    # correct drift
    img_cor = cd.apply_drifts(drifts)
 
+Test data
+---------
+
+Napari-correct-drift contains synthetic sample data. To test it on real data download an example Arabidopsis growing `root tip <https://seafile.ist.ac.at/f/b05362d4f358430c8c59/?dl=1>`_
+
 Issues and contributing
 -----------------------
 

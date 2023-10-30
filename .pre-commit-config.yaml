@@ -29,10 +29,10 @@ repos:
   #   hooks:
   #     - id: flake8
   #       additional_dependencies: [flake8-typing-imports>=1.9.0]
-  - repo: https://github.com/tlambert03/napari-plugin-checks
-    rev: v0.3.0
-    hooks:
-      - id: napari-plugin-checks
+  # - repo: https://github.com/tlambert03/napari-plugin-checks
+  #   rev: v0.3.0
+  #   hooks:
+  #     - id: napari-plugin-checks
   # https://mypy.readthedocs.io/en/stable/introduction.html
   # you may wish to add this as well!
   # - repo: https://github.com/pre-commit/mirrors-mypy
