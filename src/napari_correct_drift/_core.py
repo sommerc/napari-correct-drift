@@ -9,53 +9,14 @@ from skimage.registration import phase_cross_correlation
 
 
 class ArrayAxesStandardizer:
-    """
-    A class designed to standardize the axes of numpy arrays.
+    """A class designed to standardize the axes of numpy arrays.
 
     Attributes:
-        out_order (str): string representing the desired output
-        order of the array axes in_order (str): string representing
-        the current order of the array axes
+        out_order (str): A string representing the desired output
+            order of the array axes.
+        in_order  (str): A string representing the current order of
+            the array axes.
 
-        out_order and in_order are given as string containing
-        t,c,z,y,x
-
-    Methods:
-        __init__(self, out_order: str, in_order: str):
-            Initializes the class and checks for any invalid inputs.
-
-        _check_order_str(self, order: str):
-            Checks for any duplicates in the input order.
-
-        __call__(self, data: np.array):
-            Takes in an input numpy array and standardizes the
-            axes according to the output order.
-            It returns the standardized array view.
-
-        inv(self, data: np.array):
-            Takes in a standardized numpy array and reverts the
-            axes back to the original order.
-            It returns the reverted array.
-
-        inverse_permutation(a):
-            A static method that returns the inverse permutation
-            of an input permutation.
-
-    Parameters:
-        out_order (str): a string representing the desired output
-        order of the array axes.
-        in_order (str): a string representing the current order
-        of the array axes.
-        data (np.array): a numpy array that needs to be
-        standardized or reverted.
-        a (np.array): an input permutation.
-
-    Return Value:
-        __call__(self, data: np.array): A standardized numpy array.
-        inv(self, data: np.array): A numpy array with the original
-        axis order.
-        inverse_permutation(a): An inverse permutation of the input
-        permutation.
     """
 
     def __init__(self, out_order: str, in_order: str):
@@ -64,13 +25,13 @@ class ArrayAxesStandardizer:
 
         Args:
             out_order (str): A string representing the desired output
-            order of the array axes.
+                order of the array axes.
             in_order (str): A string representing the current order of
-            the array axes.
+                the array axes.
 
         Raises:
             AssertionError: If in_order contains any elements not in
-            out_order or if out_order or in_order contains duplicates.
+                out_order or if out_order or in_order contains duplicates.
         """
         self._check_order_str(out_order)
         self._check_order_str(in_order)
@@ -83,16 +44,6 @@ class ArrayAxesStandardizer:
         self.in_order = in_order
 
     def _check_order_str(self, order: str):
-        """
-        Checks for any duplicates in the input order.
-
-        Args:
-            order (str): A string representing the current order of
-            the array axes.
-
-        Raises:
-            AssertionError: If order contains duplicates.
-        """
         assert len(set(order)) == len(
             order
         ), f"Duplicates in order found: '{order}'"
@@ -171,7 +122,18 @@ class ArrayAxesStandardizer:
 
 
 class ROIRect:
-    """Helper classes for 3D bounding-box, localized in channels and time"""
+    """Helper classes for 3D bounding-box, localized in channels and time
+
+    Args:
+            x_min (int): x min
+            x_max (int): x max
+            y_min (int): y min
+            y_max (int): y max
+            z_min (int): z min
+            z_max (int): z max
+            t0 (int): frame index
+            c0 (int): channel index
+    """
 
     def __init__(
         self,
@@ -184,18 +146,6 @@ class ROIRect:
         t0: int,
         c0: int,
     ):
-        """_summary_
-
-        Args:
-            x_min (int): x min
-            x_max (int): x max
-            y_min (int): y min
-            y_max (int): y max
-            z_min (int): z min
-            z_max (int): z max
-            t0 (int): frame index
-            c0 (int): channel index
-        """
         self.x_min = x_min
         self.x_max = x_max
 

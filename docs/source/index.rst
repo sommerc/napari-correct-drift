@@ -1,13 +1,13 @@
 Napari-Correct-Drift's doc
 ==========================
 
-Fiji’s Correct-3D-drift macro for Napari
+Fiji's Correct-3D-drift macro for Napari
 ----------------------------------------
 In time-lapse imaging, a motorized microscope repeatedly captures images at specified positions for long periods. However, microscope stages exhibit *drift*, causing the sample to move, or to appear moving.
 
 The reasons are complex and manifold, but it typically results from error propagation in odometry, thermal expansion, and mechanical movement. Drift poses problems for subsequent image analysis and needs to be corrected.
 
-With Napari-correct-drift provides an extensible solution with similar functionality as Fiji’s Correct-3D-drift macro. It offers efficient cross-correlation using Fourier phase correlationmethod, improved key frame selection, and outlier handling. In Napari users can provide a regions-of-interest (ROI) to effectively stabilize objects in up-to 3D-multi-channel images. Additionally, estimated drifts can be exported, imported, or edited before applying the correction.
+With Napari-correct-drift provides an extensible solution with similar functionality as Fiji's Correct-3D-drift macro. It offers efficient cross-correlation using Fourier phase correlation method, improved key frame selection, and outlier handling. In Napari users can provide a regions-of-interest (ROI) to effectively stabilize objects in up-to 3D-multi-channel images. Additionally, estimated drifts can be exported, imported, or edited before applying the correction.
 
 When to use this plugin
 -----------------------
@@ -33,6 +33,15 @@ Napari-Correct-Drift can also be used without starting the Napari viewer.
 
    # correct drift
    img_cor = cd.apply_drifts(drifts)
+
+With Napari viewer (using ROI)
+--------------------------------------
+Stabilizing an growing `root-tip <https://seafile.ist.ac.at/f/b05362d4f358430c8c59/?dl=1>`_ using an ROI.
+
+.. raw:: html
+
+    <video controls  width="640" src="https://seafile.ist.ac.at/f/de0c4cff54cf46dcbfbc/?dl=1"></video>
+
 
 Test data
 ---------

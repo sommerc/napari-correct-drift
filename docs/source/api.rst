@@ -1,5 +1,5 @@
 API reference
 =============
 
-.. automodule:: napari_correct_drift._core
+.. automodule:: napari_correct_drift
    :members:

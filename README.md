@@ -6,6 +6,7 @@
 [![tests](https://github.com/sommerc/napari-correct-drift/workflows/tests/badge.svg)](https://github.com/sommerc/napari-correct-drift/actions)
 [![codecov](https://codecov.io/gh/sommerc/napari-correct-drift/branch/main/graph/badge.svg)](https://codecov.io/gh/sommerc/napari-correct-drift)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-correct-drift)](https://napari-hub.org/plugins/napari-correct-drift)
+[![Documentation Status](https://readthedocs.org/projects/napari-correct-drift/badge/?version=latest)](https://napari-correct-drift.readthedocs.io/en/latest/?badge=latest)
 
 Napari-correct-drift brings the functionality of Fiji’s popular Correct-3D-drift macro to Napari for flexible and efficient correction of stage and sample drift common in time-lapse microscopy.
 

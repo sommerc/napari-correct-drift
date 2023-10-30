@@ -41,6 +41,7 @@ release = "0.3.0"
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx_autodoc_typehints",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
 ]

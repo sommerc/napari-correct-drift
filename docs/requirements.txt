@@ -300,6 +300,9 @@ sphinx==4.5.0
 sphinx-rtd-theme
     # via
     #   myself
+sphinx-autodoc-typehints
+    # via
+    #   myself
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
