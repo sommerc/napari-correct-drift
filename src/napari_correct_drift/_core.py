@@ -171,6 +171,8 @@ class ArrayAxesStandardizer:
 
 
 class ROIRect:
+    """Helper classes for 3D bounding-box, localized in channels and time"""
+
     def __init__(
         self,
         x_min: int,
@@ -182,6 +184,18 @@ class ROIRect:
         t0: int,
         c0: int,
     ):
+        """_summary_
+
+        Args:
+            x_min (int): x min
+            x_max (int): x max
+            y_min (int): y min
+            y_max (int): y max
+            z_min (int): z min
+            z_max (int): z max
+            t0 (int): frame index
+            c0 (int): channel index
+        """
         self.x_min = x_min
         self.x_max = x_max
 
@@ -207,6 +221,15 @@ class ROIRect:
     def from_shape_poly(
         cls, shape_poly: np.array, dims: str, z_min: int, z_max: int
     ):
+        """Creates ROIRect from napari shape polygon
+
+        Args:
+            shape_poly (np.array): napari polygon shape
+            dims (str): dimensions string
+            z_min (int): z min
+            z_max (int): z max
+
+        """
         p_min = shape_poly.min(0)
         p_max = shape_poly.max(0)
 
@@ -316,6 +339,7 @@ class CorrectDrift:
     apply_shifts(offsets, extend_output=False, order=1, mode='constant')
         Applies the given offsets to the input data to correct for drift.
 
+
     """
 
     def __init__(self, data: np.array, dims: str):
@@ -387,6 +411,24 @@ class CorrectDrift:
         mode: str = "relative",
         max_shifts: Tuple[int, int, int] = None,
     ):
+        """_summary_
+
+        Args:
+            t0 (int, optional): _description_. Defaults to 0.
+            channel (int, optional): _description_. Defaults to 0.
+            increment (int, optional): _description_. Defaults to 1.
+            upsample_factor (int, optional): _description_. Defaults to 1.
+            roi (ROIRect, optional): _description_. Defaults to None.
+            normalization (str, optional): _description_. Defaults to "phase".
+            mode (str, optional): _description_. Defaults to "relative".
+            max_shifts (Tuple[int, int, int], optional): _description_. Defaults to None.
+
+        Raises:
+            AttributeError: _description_
+
+        Returns:
+            _type_: _description_
+        """
         if mode == "relative":
             return self._estimate_drift_relative(
                 t0,
