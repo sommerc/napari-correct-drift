@@ -1,10 +1,9 @@
 Introduction
 ============
 
-
 Example
 -------
 
-.. .. raw:: html
+.. raw:: html
 
-..     <video controls  width="640" src="_static/root_2_screencast.mp4"></video>
+    <video controls  width="640" src="https://seafile.ist.ac.at/f/de0c4cff54cf46dcbfbc/?dl=1"></video>
