@@ -21,7 +21,11 @@ The five groups are:
 
 Input Axes
 ^^^^^^^^^^
-Select the Napari layer to process using the drop-down element. Once the layer is selected, make sure the dimensions are correctly set. When using multidimensional images (with more than 3 dimensions), Napari-Correct-Drift needs to know which dimension corresponds to the *Z*, *Channel* and *Time* dimension. The Time dimension always needs to be assigned. Use the drop-down elements per Axis to set *Z*, *Channel* and *Time*. Napari-Correct-Drift displays the size of the selected dimension for convenience in brackets.
+Select the Napari layer to process using the drop-down element. Once the layer is selected, make sure the dimensions are correctly set.
+
+When using multidimensional images (with more than 3 dimensions), Napari-Correct-Drift needs to know which dimension corresponds to the *Z*, *Channel* and *Time* dimension. The **Time** dimension always **needs to be assigned**.
+
+Use the drop-down elements per Axis to set *Z*, *Channel* and *Time*. Napari-Correct-Drift displays the size of the selected dimension in brackets.
 
 Correct Drift
 ^^^^^^^^^^^^^

@@ -33,5 +33,4 @@ contributions:
 
   widgets:
     - command: napari-correct-drift.make_qwidget
-      display_name: Napari Correct Drift Doc
-
+      display_name: Napari Correct Drift
