@@ -60,7 +60,7 @@ If you have any problems or question running the plugin, please open an `issue <
 
    install
    introduction
-   how_to
+   how_to_roi
    api
 
 Indices and tables
