@@ -21,7 +21,6 @@ from skimage.registration import phase_cross_correlation
 
 @lru_cache
 def window_nd(shape, win_func=windows.hann):
-    print("make window for shape", shape)
     assert len(shape) > 1, "Shape must have minimum 2 elements"
 
     out = np.outer(win_func(shape[0]), win_func(shape[1]))
@@ -476,7 +475,6 @@ class CorrectDrift:
                     disambiguate=True,
                     normalization=normalization,
                 )
-                print("offsets", offset)
 
             offset = np.asarray(offset, dtype="float32")
 
