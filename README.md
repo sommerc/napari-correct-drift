@@ -27,8 +27,6 @@ You can install `napari-correct-drift` via [pip]:
 
     pip install napari-correct-drift
 
-
-
 To install latest development version :
 
     pip install git+https://github.com/sommerc/napari-correct-drift.git
@@ -42,9 +40,9 @@ To install latest development version :
 - [x] ROI support (rectangles)
 - [x] Saving and loading of drift tables
 - [x] Outlier handling
-- [ ] Sphinx documentation
-- [ ] How-tos
-- [ ] Tutorials and Guides
+- [x] Sphinx documentation
+- [x] How-tos
+- [x] Tutorials and Guides
 
 ## Contributing
 
