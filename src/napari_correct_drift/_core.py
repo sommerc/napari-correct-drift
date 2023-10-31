@@ -1,15 +1,39 @@
+"""Napari-Correct-Drift's core functionality classes
+
+The actual cross-correlation is done with by Fourier phase correlation implmented in `phase_cross_correlation
+<https://scikit-image.org/docs/stable/api/skimage.registration.html#skimage.registration.phase_cross_correlation>`_
+
+If an ROI is used the the ROI-cropped images is zero-padded.
+"""
+
+
 import warnings
+from functools import lru_cache
 from typing import Tuple
 
 import numpy as np
 from napari.utils import progress
 from scipy.interpolate import interp1d
 from scipy.ndimage import shift
+from scipy.signal import windows
 from skimage.registration import phase_cross_correlation
 
 
+@lru_cache
+def window_nd(shape, win_func=windows.hann):
+    print("make window for shape", shape)
+    assert len(shape) > 1, "Shape must have minimum 2 elements"
+
+    out = np.outer(win_func(shape[0]), win_func(shape[1]))
+
+    for s in shape[2:]:
+        out = np.outer(out, win_func(s))
+
+    return out.reshape(shape)
+
+
 class ArrayAxesStandardizer:
-    """A class designed to standardize the axes of numpy arrays.
+    """This class standardizes the axes of numpy arrays.
 
     Attributes:
         out_order (str): A string representing the desired output
@@ -30,8 +54,8 @@ class ArrayAxesStandardizer:
                 the array axes.
 
         Raises:
-            AssertionError: If in_order contains any elements not in
-                out_order or if out_order or in_order contains duplicates.
+            AssertionError: If `in_order` contains any elements not in
+                `out_order` or if `out_order` or `in_order` contains duplicates.
         """
         self._check_order_str(out_order)
         self._check_order_str(in_order)
@@ -49,10 +73,10 @@ class ArrayAxesStandardizer:
         ), f"Duplicates in order found: '{order}'"
 
     def __call__(self, data: np.array):
-        """
-        Takes in an input numpy array and standardizes the axes according
-        to the output order.
-        It returns the standardized array.
+        """Standardizes given `data` array
+
+        Takes an input numpy array and standardizes the axes according
+        to the output order. It returns the standardized array.
 
         Args:
             data (np.array): A numpy array that needs to be standardized.
@@ -61,8 +85,7 @@ class ArrayAxesStandardizer:
             np.array: A standardized numpy array.
 
         Raises:
-            AssertionError: If the shape of the input array does not match
-            the input order.
+            AssertionError: If the shape of the input array does not match the input order.
         """
 
         assert len(data.shape) == len(self.in_order), (
@@ -80,7 +103,8 @@ class ArrayAxesStandardizer:
         return data_rearranged
 
     def inv(self, data: np.array):
-        """
+        """Inverse standardization
+
         Applies the inverse transform to the input data. The input data
         is expected to be a numpy array with the shape
         specified by the 'out_order' argument passed to the constructor.
@@ -124,15 +148,15 @@ class ArrayAxesStandardizer:
 class ROIRect:
     """Helper classes for 3D bounding-box, localized in channels and time
 
-    Args:
-            x_min (int): x min
-            x_max (int): x max
-            y_min (int): y min
-            y_max (int): y max
-            z_min (int): z min
-            z_max (int): z max
-            t0 (int): frame index
-            c0 (int): channel index
+    Attributes:
+        x_min (int): x min
+        x_max (int): x max
+        y_min (int): y min
+        y_max (int): y max
+        z_min (int): z min
+        z_max (int): z max
+        t0 (int): frame index
+        c0 (int): channel index
     """
 
     def __init__(
@@ -162,10 +186,10 @@ class ROIRect:
 
     def _check(self):
         assert (
-            self.z_max > self.z_min > -1
+            self.z_max > self.z_min
         ), "Z-dim mismatch. Choose Z minimum and maximum"
-        assert self.y_max > self.y_min > -1, "y-dim mismatch"
-        assert self.x_max > self.x_min > -1, "x-dim mismatch"
+        assert self.y_max > self.y_min, "y-dim mismatch"
+        assert self.x_max > self.x_min, "x-dim mismatch"
 
     @classmethod
     def from_shape_poly(
@@ -205,6 +229,14 @@ class ROIRect:
 
     @classmethod
     def from_bbox(cls, bbox: np.array, t0: int, c0: int):
+        """Init from bounding box
+
+        Args:
+            bbox (np.array): bounding box
+            t0 (int): key frame
+            c0 (int): key channel
+
+        """
         return cls(
             bbox[4], bbox[5], bbox[2], bbox[3], bbox[0], bbox[1], t0, c0
         )
@@ -243,56 +275,24 @@ class ROIRect:
 
 
 class CorrectDrift:
-    """
-    Class for drift correction of microscopy images.
+    """Main drift correction class
 
-    Parameters
-    ----------
-    data : np.array
-        The input data, with dimensions ordered according to
-        the given `dims`.
-    dims : str
-        The dimension order of the input data. Must include
-        axes 't', 'x', and 'y'.
-
-    Attributes
-    ----------
-    is_multi_channel : bool
-        True if the data has multiple channels.
-    is_3d : bool
-        True if the data has a z dimension.
-    dims : str
-        The dimension order of the input data.
-    data_arranger : ArrayAxesStandardizer
-        An ArrayAxesStandardizer instance used to rearrange the input data.
-    data : np.array
-        The rearranged input data.
-    T, C, Z, Y, X : int
-        The number of time points, channels, z-slices, rows, and columns
-        in the input data.
-
-    Methods
-    -------
-    estimate_shifts_absolute(t0=0, channel=0, increment=1, upsample_factor=1,
-    roi=None)
-        Estimates the absolute shifts for each time point using cross-
-        correlation.
-    iter_abs(T, t0, step)
-        An iterator that generates time points for estimating absolute shifts.
-    estimate_shifts_relative(t0=0, step=1, upsample_factor=1, roi=None)
-        Estimates the relative shifts for each time point using cross-
-        correlation.
-    iter_rel(T, t0, step)
-        An iterator that generates time points for estimating relative shifts.
-    interpolate_offsets(offsets)
-        Interpolates any missing offsets using linear interpolation.
-    apply_shifts(offsets, extend_output=False, order=1, mode='constant')
-        Applies the given offsets to the input data to correct for drift.
-
-
+    Attributes:
+        is_multi_channel (bool): True if the data has multiple channels.
+        is_3d (bool): True if the data has a z dimension.
+        dims (str): The dimension order of the input data.
+        data_arranger (ArrayAxesStandardizer): An `ArrayAxesStandardizer` instance used to rearrange the input data.
+        data (np.array): The rearranged input data.
+        T, C, Z, Y, X (int): The number of time points, channels, z-slices, rows, and columns in the input data.
     """
 
     def __init__(self, data: np.array, dims: str):
+        """Main drift correction class
+
+        Args:
+            data (np.array): image data
+            dims (str): corresponding axes
+        """
         assert (
             "t" in dims
         ), f"Axis 't' for stabilizing not found in data dims: '{dims}'"
@@ -361,23 +361,23 @@ class CorrectDrift:
         mode: str = "relative",
         max_shifts: Tuple[int, int, int] = None,
     ):
-        """_summary_
+        """Estimate drift entry point.
+
+        Calls `_estimate_drift_relative` or `_estimate_drift_absolute` depending on given `mode`
 
         Args:
-            t0 (int, optional): _description_. Defaults to 0.
-            channel (int, optional): _description_. Defaults to 0.
-            increment (int, optional): _description_. Defaults to 1.
-            upsample_factor (int, optional): _description_. Defaults to 1.
-            roi (ROIRect, optional): _description_. Defaults to None.
-            normalization (str, optional): _description_. Defaults to "phase".
-            mode (str, optional): _description_. Defaults to "relative".
-            max_shifts (Tuple[int, int, int], optional): _description_. Defaults to None.
+            t0 (int, optional): key frame. Defaults to 0.
+            channel (int, optional): key channel. Defaults to 0.
+            increment (int, optional): frame increment. Defaults to 1.
+            upsample_factor (int, optional): upsample factor. Defaults to 1.
+            roi (ROIRect, optional): ROI. Defaults to None.
+            normalization (str, optional): normalization. Defaults to "phase".
+            mode (str, optional): mode of drift correction. Defaults to "relative".
+            max_shifts (Tuple[int, int, int], optional): maximum allowed shifts. Defaults to None.
 
         Raises:
-            AttributeError: _description_
+            AttributeError: if `mode` is not supported
 
-        Returns:
-            _type_: _description_
         """
         if mode == "relative":
             return self._estimate_drift_relative(
@@ -451,8 +451,10 @@ class CorrectDrift:
                     ),
                 ].copy()
 
+                # Windowing with hann window
+                ref_img_crop = ref_img_crop * window_nd(ref_img_crop.shape)
+
                 ref_img = np.zeros_like(ref_img)
-                # ref_img[:] = ref_img_crop.mean()
 
                 ref_img[
                     : ref_img_crop.shape[0],
@@ -474,17 +476,17 @@ class CorrectDrift:
                     disambiguate=True,
                     normalization=normalization,
                 )
+                print("offsets", offset)
 
             offset = np.asarray(offset, dtype="float32")
 
             if roi is not None:
                 offset += mov_bbox[::2]
 
-            if roi is not None:
                 mov_bbox[::2] -= np.round(offset).astype("int32")
                 mov_bbox[1::2] -= np.round(offset).astype("int32")
 
-                mov_bbox[0:2] = np.clip(mov_bbox[0:2], 0, ref_img.shape[0])
+                # mov_bbox[0:2] = np.clip(mov_bbox[0:2], 0, ref_img.shape[0])
                 mov_bbox[2:4] = np.clip(mov_bbox[2:4], 0, ref_img.shape[1])
                 mov_bbox[4:] = np.clip(mov_bbox[4:], 0, ref_img.shape[2])
             if m > r:
