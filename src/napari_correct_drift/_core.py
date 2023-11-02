@@ -9,7 +9,7 @@ If an ROI is used the the ROI-cropped images is zero-padded.
 
 import warnings
 from functools import lru_cache
-from typing import Tuple
+from typing import Callable, Tuple
 
 import numpy as np
 from napari.utils import progress
@@ -20,7 +20,22 @@ from skimage.registration import phase_cross_correlation
 
 
 @lru_cache
-def window_nd(shape, win_func=windows.hann):
+def window_nd(
+    shape: Tuple[int, ...], win_func: Callable = windows.hann
+) -> np.array:
+    """N-dimensional windowing using 1d `win_fumc
+
+    Note 1: shape should be at least 2d
+
+    Note 2: this function is (lru_)cached
+
+    Args:
+        shape (Tuple[int, ...]): Desired output shape
+        win_func (Callable, optional): 1d Window function as in `scipy.signal.windows`. Defaults to `windows.hann`.
+
+    Returns:
+        np.array: Array with applied window function.
+    """
     assert len(shape) > 1, "Shape must have minimum 2 elements"
 
     out = np.outer(win_func(shape[0]), win_func(shape[1]))
