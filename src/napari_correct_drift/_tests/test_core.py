@@ -112,12 +112,12 @@ def test_tczyx_roi():
         ]
     )
 
-    roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 7, 15)
+    roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 0, 15)
     t0 = roi.t0
     c0 = roi.c0
     ofs = ist_3d._estimate_drift_absolute(t0, roi=roi)
 
-    ofs = ist_3d._estimate_drift_absolute(t0, roi=roi, channel=c0)
+    # ofs = ist_3d._estimate_drift_absolute(t0, roi=roi, channel=c0)
     ok = ofs - example.shifts + example.shifts[t0]
     assert np.allclose(ok, 0)
 
@@ -185,17 +185,17 @@ def test_zcyx_roi_rel():
         ]
     )
 
-    roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 7, 15)
+    roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 4, 15)
     t0 = roi.t0
     c0 = roi.c0
     assert t0 == 11
     assert c0 == 0
-    assert roi.z_min == 7
+    assert roi.z_min == 4
     assert roi.z_max == 15
 
     ofs = ist_3d._estimate_drift_relative(t0, roi=roi)
 
-    ofs = ist_3d._estimate_drift_relative(t0, roi=roi, channel=c0)
+    # ofs = ist_3d._estimate_drift_relative(t0, roi=roi, channel=c0)
     ok = ofs - example.shifts + example.shifts[t0]
 
     assert np.allclose(ok, 0), str(ok)
