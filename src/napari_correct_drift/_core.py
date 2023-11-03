@@ -426,6 +426,7 @@ class CorrectDrift:
         normalization: str = "phase",
         roi: ROIRect = None,
         max_shifts: tuple = None,
+        windowing: bool = True,
     ):
         offsets_rel = np.zeros((self.T, 3))
         offsets_rel.fill(np.nan)
@@ -452,7 +453,13 @@ class CorrectDrift:
             ref_img = self.data[r, channel]
             mov_img = self.data[m, channel]
 
-            if roi is not None:
+            if windowing:
+                mov_img = mov_img * window_nd(mov_img.shape)
+
+            if roi is None:
+                if windowing:
+                    ref_img = ref_img * window_nd(ref_img.shape)
+            else:
                 ref_img_crop = ref_img[
                     slice(
                         max(0, mov_bbox[0]), min(ref_img.shape[0], mov_bbox[1])
@@ -466,7 +473,8 @@ class CorrectDrift:
                 ].copy()
 
                 # Windowing with hann window
-                ref_img_crop = ref_img_crop * window_nd(ref_img_crop.shape)
+                if windowing:
+                    ref_img_crop = ref_img_crop * window_nd(ref_img_crop.shape)
 
                 ref_img = np.zeros_like(ref_img)
 
@@ -476,32 +484,45 @@ class CorrectDrift:
                     : ref_img_crop.shape[2],
                 ] = ref_img_crop
 
+            # see https://github.com/scikit-image/scikit-image/issues/7089
+            disambiguate = True
+            if mov_img.std() == 0:
+                disambiguate = False
+
             with warnings.catch_warnings():
                 warnings.filterwarnings(
                     action="ignore",
                     category=RuntimeWarning,
                 )
 
-                offset, _, _ = phase_cross_correlation(
+                offset_raw, _, _ = phase_cross_correlation(
                     ref_img,
                     mov_img,
                     upsample_factor=upsample_factor,
-                    return_error="always",
-                    disambiguate=True,
+                    disambiguate=disambiguate,
                     normalization=normalization,
                 )
 
-            offset = np.asarray(offset, dtype="float32")
+            offset_raw = np.asarray(offset_raw, dtype="float32")
 
-            if roi is not None:
-                offset += mov_bbox[::2]
+            if roi is None:
+                # no roi offsets stay unchanged
+                offset = offset_raw
+            else:
+                # offset is relative to ROI content pasted at origin
+                # hence, add roi origin
+                offset = offset_raw + mov_bbox[::2]
 
+                # prepare mov_bbox for next round and move roi along
                 mov_bbox[::2] -= np.round(offset).astype("int32")
                 mov_bbox[1::2] -= np.round(offset).astype("int32")
 
-                # mov_bbox[0:2] = np.clip(mov_bbox[0:2], 0, ref_img.shape[0])
+                # clip if new moving bbox is out of image
+                mov_bbox[0:2] = np.clip(mov_bbox[0:2], 0, ref_img.shape[0])
                 mov_bbox[2:4] = np.clip(mov_bbox[2:4], 0, ref_img.shape[1])
                 mov_bbox[4:] = np.clip(mov_bbox[4:], 0, ref_img.shape[2])
+
+            # set offsets depending on direction relative to key-frame
             if m > r:
                 if not np.any(np.abs(offset) > np.array(max_shifts)):
                     offsets_rel[m] = -offset
@@ -556,6 +577,11 @@ class CorrectDrift:
         ):
             mov_img = self.data[m, channel]
 
+            # see https://github.com/scikit-image/scikit-image/issues/7089
+            disambiguate = True
+            if mov_img.std() == 0:
+                disambiguate = False
+
             with warnings.catch_warnings():
                 warnings.filterwarnings(
                     action="ignore",
@@ -565,8 +591,7 @@ class CorrectDrift:
                     ref_img,
                     mov_img,
                     upsample_factor=upsample_factor,
-                    return_error="always",
-                    disambiguate=True,
+                    disambiguate=disambiguate,
                     normalization=normalization,
                 )
 
