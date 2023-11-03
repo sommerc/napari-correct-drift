@@ -117,6 +117,7 @@ class Example_TCYX(Example_TYX):
 
 
 def sample_2d():
+    """Creates 2D + time example data"""
     return [
         (
             Example_TYX().create(noise_level=16),
@@ -126,6 +127,7 @@ def sample_2d():
 
 
 def sample_3d():
+    """Creates 3D + time example data"""
     return [
         (
             Example_TZYX().create(noise_level=16),
@@ -135,6 +137,7 @@ def sample_3d():
 
 
 def sample_3d_ch():
+    """Creates 2D + channel + time example data"""
     return [
         (
             Example_TCYX().create(noise_level=16),

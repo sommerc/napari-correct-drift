@@ -20,15 +20,15 @@ contributions:
 
   sample_data:
     - command: napari-correct-drift.sample_2d
-      display_name: Napari Correct Drift 2D
+      display_name: Synthetic Drift 2D
       key: unique_id.0
 
     - command: napari-correct-drift.sample_3d
-      display_name: Napari Correct Drift 3D
+      display_name: Synthetic Drift 3D
       key: unique_id.1
 
     - command: napari-correct-drift.sample_3d_ch
-      display_name: Napari Correct Drift 3D + Channel
+      display_name: Synthetic Drift 2D + Channel
       key: unique_id.2
 
   widgets:
