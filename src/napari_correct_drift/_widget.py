@@ -175,6 +175,7 @@ class CorrectDriftDock(QWidget):
         # key frame
         self.key_frame = QSpinBox()
         self.key_frame.setMinimum(0)
+        self.key_frame.setMaximum(99999)
         self.key_frame.setValue(0)
 
         key_and_roi_layout.addWidget(QLabel("Key frame"), i, 0)
@@ -184,6 +185,7 @@ class CorrectDriftDock(QWidget):
         # key channel
         self.key_channel = QSpinBox()
         self.key_channel.setMinimum(0)
+        self.key_channel.setMaximum(99999)
         self.key_channel.setValue(0)
 
         key_and_roi_layout.addWidget(QLabel("Key channel"), i, 0)
@@ -225,10 +227,12 @@ class CorrectDriftDock(QWidget):
         # ROI z-min and z=max
         self.roi_z_min = QSpinBox()
         self.roi_z_min.setMinimum(0)
+        self.roi_z_min.setMaximum(99999)
         self.roi_z_min.setValue(0)
 
         self.roi_z_max = QSpinBox()
         self.roi_z_max.setMinimum(0)
+        self.roi_z_max.setMaximum(99999)
         self.roi_z_max.setValue(0)
 
         self.roi_z_min_label = QLabel("Roi Z-min")
