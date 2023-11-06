@@ -23,11 +23,11 @@ from skimage.registration import phase_cross_correlation
 def window_nd(
     shape: Tuple[int, ...], win_func: Callable = windows.hann
 ) -> np.array:
-    """N-dimensional windowing using 1d `win_fumc
+    """N-dimensional windowing using 1d `win_func`. Default Hann window.
 
     Note 1: shape should be at least 2d
 
-    Note 2: this function is (lru_)cached
+    Note 2: this function is cached.
 
     Args:
         shape (Tuple[int, ...]): Desired output shape
@@ -47,7 +47,10 @@ def window_nd(
 
 
 class ArrayAxesStandardizer:
-    """This class standardizes the axes of numpy arrays.
+    """This class standardizes the axes of numpy arrays by rearranging
+       the axes order.
+
+       Axes orders are given by strings, e. g. 'tzcyx'
 
     Attributes:
         out_order (str): A string representing the desired output
@@ -243,7 +246,9 @@ class ROIRect:
 
     @classmethod
     def from_bbox(cls, bbox: np.array, t0: int, c0: int):
-        """Init from bounding box
+        """Creates ROIRect from  from bounding box list:
+
+           [z_min, z_max, y_min, y_max, x_min, x_max,]
 
         Args:
             bbox (np.array): bounding box
@@ -301,7 +306,7 @@ class CorrectDrift:
     """
 
     def __init__(self, data: np.array, dims: str):
-        """Main drift correction class
+        """Init of main drift correction class
 
         Args:
             data (np.array): image data
@@ -389,6 +394,7 @@ class CorrectDrift:
             normalization (str, optional): normalization. Defaults to "phase".
             mode (str, optional): mode of drift correction. Defaults to "relative".
             max_shifts (Tuple[int, int, int], optional): maximum allowed shifts. Defaults to None.
+            use_winsow (bool): use Hann window to prevent spectral leakage. Defautls to True.
 
         Raises:
             AttributeError: if `mode` is not supported
@@ -618,6 +624,17 @@ class CorrectDrift:
         return offsets
 
     def interpolate_drift(self, offsets: np.array):
+        """Linear interpolation of missing values given as `np.nan` values
+
+        Args:
+            offsets (np.array): The drift table containing missing values (`np.nan`)
+
+        Raises:
+            RuntimeError: When too few values for interpolation
+
+        Returns:
+            offsets (np.array): offsets with linearly interpolated values
+        """
         x = np.nonzero(~np.isnan(offsets).any(axis=1))[0]
 
         if x.shape[0] < 3:
@@ -640,6 +657,18 @@ class CorrectDrift:
         order: int = 1,
         mode: str = "constant",
     ):
+        """Apply drifts to effectively create the corrected output image
+
+        Args:
+            offsets (np.array): the drift table
+            extend_output (bool, optional): if True, the output array is
+                extended to always contain the original frame. Defaults to False.
+            order (int, optional): order of interpolation (1=linear). Defaults to 1.
+            mode (str, optional): border treatment. Defaults to "constant".
+
+        Returns:
+            np.array: the corrected output image
+        """
         if extend_output:
             # compute new shape of extended output
             shape_ext_zyx = np.ceil(offsets.max(0) - offsets.min(0)).astype(
@@ -693,5 +722,5 @@ class CorrectDrift:
                         prefilter=False,
                     )
 
-        # Transfrom from TCZYX to original data layout
+        # Transform from TCZYX to original data layout
         return self.data_arranger.inv(output)
