@@ -166,12 +166,7 @@ class ROIRect:
     """Helper classes for 3D bounding-box, localized in channels and time
 
     Attributes:
-        x_min (int): x min
-        x_max (int): x max
-        y_min (int): y min
-        y_max (int): y max
-        z_min (int): z min
-        z_max (int): z max
+        x_min, x_max, y_min, y_max, z_min, z_max (int): special boundaries of the ROI rectangle.
         t0 (int): frame index
         c0 (int): channel index
     """

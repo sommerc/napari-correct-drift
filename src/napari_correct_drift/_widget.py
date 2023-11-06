@@ -37,6 +37,18 @@ if TYPE_CHECKING:
 
 
 class CorrectDriftDock(QWidget):
+    """Main user interface for Napari-Correct-Drift.
+
+    The main widget is structured in several groups:
+
+    1. Input Axes: Select napari layer to process
+    2. Correct Drift: Estimate, load or correct drift
+    3. Key Frames: Set the key frames and mode for correction
+    4. Parameters: Set Parameters of the drift correction
+    5. Outliers: Handle outlier drifts
+
+    """
+
     ROI_LAYER_NAME = "ROI"
 
     def _init_input_layer_selection(self):
@@ -618,6 +630,11 @@ class CorrectDriftDock(QWidget):
 
 
 class TableWidget(QWidget):
+    """A editable table widget containing the estimated drifts.
+
+    The underlying table data can be saved or copied to clipboard.
+    """
+
     def __init__(
         self, ist: CorrectDrift = None, viewer: "napari.Viewer" = None
     ):
