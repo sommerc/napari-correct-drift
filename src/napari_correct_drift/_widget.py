@@ -348,6 +348,10 @@ class CorrectDriftDock(QWidget):
             "Maximum relative shift allowed in X (in pixel)"
         )
 
+        self.windowing_box.setToolTip(
+            "Use a Hann window function to prevent edge effects (recommended, especially when using a ROI)"
+        )
+
     def _init_other_params(self):
         parameter_panel = QGroupBox("Parameters")
         parameter_layout = QGridLayout()
@@ -387,6 +391,14 @@ class CorrectDriftDock(QWidget):
 
         parameter_layout.addWidget(QLabel("Use phase normalization"), i, 0)
         parameter_layout.addWidget(self.normalization_box, i, 1)
+        i += 1
+
+        # windowing
+        self.windowing_box = QCheckBox()
+        self.windowing_box.setChecked(True)
+
+        parameter_layout.addWidget(QLabel("Use window function"), i, 0)
+        parameter_layout.addWidget(self.windowing_box, i, 1)
         i += 1
 
         parameter_panel.setLayout(parameter_layout)
@@ -510,6 +522,9 @@ class CorrectDriftDock(QWidget):
         if self.normalization_box.isChecked():
             normalization = "phase"
 
+        # get window
+        use_window = self.windowing_box.isChecked()
+
         use_roi = self.roi_checkbox.isChecked()
 
         roi = None
@@ -551,6 +566,7 @@ class CorrectDriftDock(QWidget):
             mode=estimate_mode,
             normalization=normalization,
             max_shifts=max_shifts,
+            use_window=use_window,
         )
 
         if increment > 1 or np.any(np.isnan(drift_shifts)):

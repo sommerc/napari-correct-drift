@@ -374,6 +374,7 @@ class CorrectDrift:
         normalization: str = "phase",
         mode: str = "relative",
         max_shifts: Tuple[int, int, int] = None,
+        use_window: bool = True,
     ):
         """Estimate drift entry point.
 
@@ -395,23 +396,25 @@ class CorrectDrift:
         """
         if mode == "relative":
             return self._estimate_drift_relative(
-                t0,
-                channel,
-                increment,
-                upsample_factor,
-                normalization,
-                roi,
-                max_shifts,
+                t0=t0,
+                channel=channel,
+                increment=increment,
+                upsample_factor=upsample_factor,
+                normalization=normalization,
+                roi=roi,
+                max_shifts=max_shifts,
+                windowing=use_window,
             )
 
         elif mode == "absolute":
             return self._estimate_drift_absolute(
-                t0,
-                channel,
-                increment,
-                upsample_factor,
-                normalization,
-                roi,
+                t0=t0,
+                channel=channel,
+                increment=increment,
+                upsample_factor=upsample_factor,
+                normalization=normalization,
+                roi=roi,
+                windowing=use_window,
             )
 
         else:
@@ -547,6 +550,7 @@ class CorrectDrift:
         upsample_factor: int = 1,
         normalization: str = "phase",
         roi: ROIRect = None,
+        windowing: bool = True,
     ):
         if not self.is_multi_channel:
             channel = 0
@@ -556,12 +560,18 @@ class CorrectDrift:
 
         ref_img = self.data[t0, channel]
 
-        if roi is not None:
+        if roi is None:
+            if windowing:
+                ref_img = ref_img * window_nd(ref_img.shape)
+        else:
             ref_img_crop = ref_img[
                 slice(max(0, roi.bbox[0]), min(ref_img.shape[0], roi.bbox[1])),
                 slice(max(0, roi.bbox[2]), min(ref_img.shape[1], roi.bbox[3])),
                 slice(max(0, roi.bbox[4]), min(ref_img.shape[2], roi.bbox[5])),
             ].copy()
+
+            if windowing:
+                ref_img_crop = ref_img_crop * window_nd(ref_img_crop.shape)
 
             ref_img = np.zeros_like(ref_img)
 
@@ -581,6 +591,9 @@ class CorrectDrift:
             disambiguate = True
             if mov_img.std() == 0:
                 disambiguate = False
+
+            if windowing:
+                mov_img = mov_img * window_nd(mov_img.shape)
 
             with warnings.catch_warnings():
                 warnings.filterwarnings(
