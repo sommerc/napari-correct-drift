@@ -87,7 +87,7 @@ def test_tzyx_roi():
         ]
     )
 
-    roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 7, 15)
+    roi = ROIRect.from_shape_poly(poly_3d, "tzyx", 3, 10)
     t0 = roi.t0
 
     ofs = ist_3d._estimate_drift_absolute(t0, roi=roi)
@@ -117,7 +117,6 @@ def test_tczyx_roi():
     c0 = roi.c0
     ofs = ist_3d._estimate_drift_absolute(t0, roi=roi)
 
-    # ofs = ist_3d._estimate_drift_absolute(t0, roi=roi, channel=c0)
     ok = ofs - example.shifts + example.shifts[t0]
     assert np.allclose(ok, 0)
 
@@ -169,6 +168,28 @@ def test_tyx_roi_rel():
     assert np.allclose(ok, 0), str(ok)
 
 
+def test_tyx_roi_rel_no_win():
+    example = Example_TYX()
+    img_2d = example.create()
+    ist_2d = CorrectDrift(img_2d, "tyx")
+
+    poly2d = np.array(
+        [
+            [23.0, 122.57642757, 142.27071085],
+            [23.0, 122.57642757, 190.77701484],
+            [23.0, 181.65929409, 190.77701484],
+            [23.0, 181.65929409, 142.27071085],
+        ]
+    )
+
+    start_roi = ROIRect.from_shape_poly(poly2d, "tyx", 0, 1)
+    t0 = start_roi.t0
+
+    ofs = ist_2d._estimate_drift_relative(t0, roi=start_roi, windowing=False)
+    ok = ofs - example.shifts + example.shifts[t0]
+    assert np.allclose(ok, 0), str(ok)
+
+
 def test_zcyx_roi_rel():
     example = Example_TZYX()
     img_3d = example.create()
@@ -195,7 +216,6 @@ def test_zcyx_roi_rel():
 
     ofs = ist_3d._estimate_drift_relative(t0, roi=roi)
 
-    # ofs = ist_3d._estimate_drift_relative(t0, roi=roi, channel=c0)
     ok = ofs - example.shifts + example.shifts[t0]
 
     assert np.allclose(ok, 0), str(ok)
