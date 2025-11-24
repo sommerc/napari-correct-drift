@@ -1,4 +1,4 @@
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 from ._core import ArrayAxesStandardizer, CorrectDrift, ROIRect, window_nd
 from ._sample_data import sample_2d, sample_3d, sample_3d_ch

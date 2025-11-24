@@ -55,7 +55,7 @@ Key Frames
   When enabled Napari-Correct-Drift expects an ROI in a shape layer named *ROI*. If such a layer is not yet present, it will be automatically created. Add an ROI (e. g. Rectangle shape) at desired channel and key frame.
 
 * **ROI z-min** and **ROI z-max:**
-  Minimum and maximum z-slice indecies for 3D-bounding box
+  Minimum and maximum z-slice indices for 3D-bounding box
 
 Parameters
 ^^^^^^^^^^

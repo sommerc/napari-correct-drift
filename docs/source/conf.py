@@ -22,8 +22,8 @@ project = "Napari-Correct-Drift"
 copyright = "2023, Christoph Sommer"
 author = "Christoph Sommer"
 
-# The full version, including alpha/beta/rc tags
-release = "0.3.0"
+# The full version, including alphagi   /beta/rc tags
+release = "0.4.1"
 
 
 # -- General configuration ---------------------------------------------------

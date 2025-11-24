@@ -436,7 +436,7 @@ class CorrectDrift:
         offsets_rel.fill(np.nan)
 
         if max_shifts is None:
-            max_shifts = [np.Inf] * 3
+            max_shifts = [np.inf] * 3
 
         if roi is not None:
             t0 = roi.t0
